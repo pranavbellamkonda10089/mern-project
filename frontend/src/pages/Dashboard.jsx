@@ -41,7 +41,7 @@ const Dashboard = () => {
     return (
         <div className="container animate-fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '2rem' }}>My Dashboard</h2>
+                <h2 style={{ fontSize: '2rem', color: '#ff4757' }}>My Dashboard</h2>
             </div>
 
             <div className="glass-card" style={{ padding: '2rem' }}>
