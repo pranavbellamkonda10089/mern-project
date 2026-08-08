@@ -17,7 +17,7 @@ const ItemDetails = () => {
     useEffect(() => {
         const fetchItem = async () => {
             try {
-                const { data } = await axios.get(`http://localhost:5000/api/items/${id}`);
+                const { data } = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}`);
                 setItem(data);
             } catch (err) {
                 console.error(err);
@@ -32,7 +32,7 @@ const ItemDetails = () => {
         setSuccess('');
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.post(`http://localhost:5000/api/items/${id}/claim`, { message: claimMessage }, config);
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/claim`, { message: claimMessage }, config);
             setSuccess('Claim submitted successfully. The poster will review it.');
             setShowClaimForm(false);
         } catch (err) {

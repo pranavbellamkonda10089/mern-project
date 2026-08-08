@@ -15,7 +15,7 @@ const Dashboard = () => {
 
     const fetchMyItems = async () => {
         try {
-            const { data } = await axios.get('http://localhost:5000/api/items');
+            const { data } = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items`);
             const myItems = data.filter(item => typeof item.postedBy === 'object'
                 ? item.postedBy._id === user._id
                 : item.postedBy === user._id || (item.postedBy.email === user.email)
@@ -29,7 +29,7 @@ const Dashboard = () => {
     const markAsReturned = async (id) => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.patch(`http://localhost:5000/api/items/${id}/status`, { status: 'returned' }, config);
+            await axios.patch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/status`, { status: 'returned' }, config);
             fetchMyItems();
         } catch (error) {
             console.error(error);

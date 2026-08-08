@@ -33,7 +33,7 @@ const PostItem = ({ type }) => {
             if (formData.claimQuestion) formDataSend.append('claimQuestion', formData.claimQuestion);
             if (formData.image) formDataSend.append('image', formData.image);
 
-            await axios.post('http://localhost:5000/api/items', formDataSend, config);
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items`, formDataSend, config);
             navigate('/dashboard');
         } catch (error) {
             console.error(error);

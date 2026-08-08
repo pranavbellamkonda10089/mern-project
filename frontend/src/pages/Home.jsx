@@ -14,7 +14,7 @@ const Home = () => {
 
     const fetchItems = async () => {
         try {
-            let url = 'http://localhost:5000/api/items';
+            let url = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items`;
             const params = new URLSearchParams();
             if (search) params.append('search', search);
             if (filter) params.append('type', filter);
