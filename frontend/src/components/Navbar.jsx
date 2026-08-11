@@ -17,6 +17,9 @@ const Navbar = () => {
                 {user ? (
                     <>
                         <Link to="/dashboard" className="nav-link">Dashboard</Link>
+                        {user.role === 'admin' && (
+                            <Link to="/admin" className="nav-link">Admin Panel</Link>
+                        )}
                         <button onClick={logout} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem' }}>
                             <LogOut size={16} /> Logout
                         </button>
