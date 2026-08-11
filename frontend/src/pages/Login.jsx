@@ -6,7 +6,7 @@ const Login = () => {
     const [isLogin, setIsLogin] = useState(true);
     const { login, register, user } = useContext(AuthContext);
 
-    const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+    const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'student' });
     const [error, setError] = useState('');
 
     if (user) return <Navigate to="/dashboard" />;
@@ -18,7 +18,7 @@ const Login = () => {
         if (isLogin) {
             res = await login(formData.email, formData.password);
         } else {
-            res = await register(formData.name, formData.email, formData.password);
+            res = await register(formData.name, formData.email, formData.password, formData.role);
         }
         if (!res.success) {
             setError(res.message);
@@ -34,10 +34,23 @@ const Login = () => {
                 {error && <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', border: '1px solid rgba(239, 68, 68, 0.2)' }}>{error}</div>}
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {!isLogin && (
-                        <div className="form-group">
-                            <label>Full Name</label>
-                            <input type="text" placeholder="John Doe" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
-                        </div>
+                        <>
+                            <div className="form-group">
+                                <label>Full Name</label>
+                                <input type="text" placeholder="John Doe" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+                            </div>
+                            <div className="form-group">
+                                <label>Role</label>
+                                <select
+                                    style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', marginTop: '0.25rem' }}
+                                    value={formData.role}
+                                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                                >
+                                    <option value="student">Student</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                        </>
                     )}
                     <div className="form-group">
                         <label>College Email</label>
