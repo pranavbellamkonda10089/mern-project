@@ -44,9 +44,16 @@ const PostItem = ({ type }) => {
     return (
         <div className="container animate-fade-in">
             <div className="glass-card form-container">
-                <h2 style={{ marginBottom: '2rem', fontSize: '2rem', textAlign: 'center' }}>
+                <h2 style={{ marginBottom: '1.5rem', fontSize: '2rem', textAlign: 'center' }}>
                     Post a <span className={`gradient-text`}>{type === 'lost' ? 'Lost' : 'Found'}</span> Item
                 </h2>
+                {type === 'lost' && (
+                    <div style={{ background: 'rgba(234, 179, 8, 0.1)', borderLeft: '4px solid #eab308', padding: '1rem', marginBottom: '2rem', borderRadius: '4px' }}>
+                        <p style={{ margin: 0, color: 'var(--text-color)', fontSize: '0.95rem' }}>
+                            <strong>Wait!</strong> Before you post this, did you search the <a href="/" style={{ color: '#eab308', textDecoration: 'underline' }}>Found items dashboard</a> to see if someone already turned your item in?
+                        </p>
+                    </div>
+                )}
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
                         <label>Item Title (e.g. Blue Water Bottle)</label>
