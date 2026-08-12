@@ -1,5 +1,6 @@
 const Item = require('../models/Item');
 const Claim = require('../models/Claim');
+const Exchange = require('../models/Exchange');
 
 const getItems = async (req, res) => {
     try {
@@ -54,6 +55,16 @@ const updateItemStatus = async (req, res) => {
         }
         item.status = status;
         await item.save();
+
+        if (status === 'returned') {
+            const approvedClaim = await Claim.findOne({ itemId: item._id, status: 'approved' });
+            await Exchange.create({
+                itemId: item._id,
+                posterId: item.postedBy,
+                claimantId: approvedClaim ? approvedClaim.claimantId : null
+            });
+        }
+
         res.status(200).json(item);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
@@ -114,4 +125,20 @@ const updateClaimStatus = async (req, res) => {
     }
 };
 
-module.exports = { getItems, createItem, getItem, updateItemStatus, createClaim, getClaims, updateClaimStatus };
+const getExchanges = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Not authorized as admin' });
+        }
+        const exchanges = await Exchange.find({})
+            .populate('itemId', 'title type category location date photoUrl')
+            .populate('posterId', 'name email')
+            .populate('claimantId', 'name email')
+            .sort('-createdAt');
+        res.status(200).json(exchanges);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error fetching exchanges' });
+    }
+};
+
+module.exports = { getItems, createItem, getItem, updateItemStatus, createClaim, getClaims, updateClaimStatus, getExchanges };
