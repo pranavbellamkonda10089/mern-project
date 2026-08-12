@@ -10,6 +10,7 @@ const ItemDetails = () => {
     const { user } = useContext(AuthContext);
     const [item, setItem] = useState(null);
     const [messages, setMessages] = useState([]);
+    const [claims, setClaims] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [claimMessage, setClaimMessage] = useState('');
     const [showClaimForm, setShowClaimForm] = useState(false);
@@ -25,12 +26,19 @@ const ItemDetails = () => {
                 ]);
                 setItem(itemRes.data);
                 setMessages(msgRes.data);
+
+                // Fetch claims if user is the poster
+                const posterId = itemRes.data.postedBy?._id || itemRes.data.postedBy;
+                if (user && user._id === posterId) {
+                    const claimsRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/claim`, { headers: { Authorization: `Bearer ${user.token}` } });
+                    setClaims(claimsRes.data);
+                }
             } catch (err) {
                 console.error(err);
             }
         };
         fetchItemAndMessages();
-    }, [id]);
+    }, [id, user]);
 
     const handleClaim = async (e) => {
         e.preventDefault();
@@ -56,6 +64,21 @@ const ItemDetails = () => {
             setNewMessage('');
         } catch (err) {
             console.error('Failed to send message');
+        }
+    };
+
+    const handleUpdateClaim = async (claimId, newStatus) => {
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.patch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/claim/${claimId}`, { status: newStatus }, config);
+
+            // Refetch claims and items to reflect changes
+            const claimsRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/claim`, config);
+            setClaims(claimsRes.data);
+            const itemRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}`);
+            setItem(itemRes.data);
+        } catch (err) {
+            console.error('Failed to update claim status');
         }
     };
 
@@ -145,6 +168,40 @@ const ItemDetails = () => {
                                 </form>
                             )}
                             {success && <div style={{ background: 'rgba(34, 197, 94, 0.1)', color: 'var(--success)', padding: '1rem', borderRadius: '8px', marginTop: '1rem' }}>{success}</div>}
+                        </div>
+                    )}
+
+                    {user && user._id === (item.postedBy?._id || item.postedBy) && (
+                        <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>
+                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <User size={18} /> Manage Claims ({claims.length})
+                            </h3>
+                            {claims.length === 0 ? (
+                                <p style={{ color: 'var(--text-muted)' }}>No one has claimed this item yet.</p>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    {claims.map(claim => (
+                                        <div key={claim._id} style={{ padding: '1.5rem', borderRadius: 'var(--radius)', background: 'var(--bg-secondary)', borderLeft: `4px solid ${claim.status === 'approved' ? 'var(--success)' : claim.status === 'rejected' ? 'var(--danger)' : 'var(--accent-primary)'}` }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                                                <div>
+                                                    <h4 style={{ margin: '0 0 0.25rem 0' }}>{claim.claimantId?.name}</h4>
+                                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Email: {claim.claimantId?.email}</p>
+                                                </div>
+                                                <span className={`badge`} style={{ background: 'rgba(0,0,0,0.1)', color: 'inherit' }}>{claim.status.toUpperCase()}</span>
+                                            </div>
+                                            <p style={{ margin: '0 0 1rem 0', padding: '1rem', background: 'var(--bg-primary)', borderRadius: '4px', fontStyle: 'italic' }}>
+                                                "{claim.message}"
+                                            </p>
+                                            {claim.status === 'pending' && (
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button onClick={() => handleUpdateClaim(claim._id, 'approved')} className="btn-primary" style={{ padding: '0.5rem 1rem', flex: 1, background: 'var(--success)', color: 'white' }}>Approve Claim</button>
+                                                    <button onClick={() => handleUpdateClaim(claim._id, 'rejected')} className="btn-secondary" style={{ padding: '0.5rem 1rem', flex: 1, color: 'var(--danger)' }}>Reject</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
 
