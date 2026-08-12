@@ -41,6 +41,18 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const googleLogin = async (credential) => {
+        try {
+            const { data } = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/google`, { credential });
+            setUser(data);
+            localStorage.setItem('userInfo', JSON.stringify(data));
+            navigate('/dashboard');
+            return { success: true };
+        } catch (error) {
+            return { success: false, message: error.response?.data?.message || 'Google Login failed. Please ensure the backend server is running on port 5000.' };
+        }
+    };
+
     const logout = () => {
         setUser(null);
         localStorage.removeItem('userInfo');
@@ -48,7 +60,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, register, logout, googleLogin, loading }}>
             {children}
         </AuthContext.Provider>
     );

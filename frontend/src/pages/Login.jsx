@@ -1,10 +1,11 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 
 const Login = () => {
     const [isLogin, setIsLogin] = useState(true);
-    const { login, register, user } = useContext(AuthContext);
+    const { login, register, googleLogin, user } = useContext(AuthContext);
 
     const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'student' });
     const [error, setError] = useState('');
@@ -20,6 +21,13 @@ const Login = () => {
         } else {
             res = await register(formData.name, formData.email, formData.password, formData.role);
         }
+        if (!res.success) {
+            setError(res.message);
+        }
+    };
+
+    const handleGoogleSuccess = async (credentialResponse) => {
+        const res = await googleLogin(credentialResponse.credential);
         if (!res.success) {
             setError(res.message);
         }
@@ -64,6 +72,20 @@ const Login = () => {
                         {isLogin ? 'Login' : 'Sign Up'}
                     </button>
                 </form>
+
+                <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>OR</span>
+                        <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
+                    </div>
+                    <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={() => setError('Google Sign In was unsuccessful')}
+                        theme="filled_black"
+                        shape="pill"
+                    />
+                </div>
                 <p style={{ textAlign: 'center', marginTop: '1.5rem', color: 'var(--text-secondary)' }}>
                     {isLogin ? "Don't have an account? " : "Already have an account? "}
                     <span style={{ color: 'var(--accent-primary)', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => setIsLogin(!isLogin)}>

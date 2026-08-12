@@ -3,7 +3,7 @@ import { AuthContext } from '../context/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
-const Dashboard = () => {
+const Dashboard = ({ filterType }) => {
     const { user, logout } = useContext(AuthContext);
     const [items, setItems] = useState([]);
 
@@ -11,15 +11,22 @@ const Dashboard = () => {
         if (user) {
             fetchMyItems();
         }
-    }, [user]);
+    }, [user, filterType]);
 
     const fetchMyItems = async () => {
         try {
             const { data } = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items`);
-            const myItems = data.filter(item => typeof item.postedBy === 'object'
+            let myItems = data.filter(item => typeof item.postedBy === 'object'
                 ? item.postedBy._id === user._id
                 : item.postedBy === user._id || (item.postedBy.email === user.email)
             );
+
+            if (filterType === 'lost') {
+                myItems = myItems.filter(item => item.type === 'lost');
+            } else if (filterType === 'found') {
+                myItems = myItems.filter(item => item.type === 'found');
+            }
+
             setItems(myItems);
         } catch (error) {
             console.error(error);
@@ -44,11 +51,19 @@ const Dashboard = () => {
                 <h2 style={{ fontSize: '2rem', color: '#ff4757' }}>My Dashboard</h2>
             </div>
 
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+                <Link to="/dashboard" className={!filterType ? 'btn-primary' : 'btn-secondary'} style={{ padding: '0.5rem 1rem' }}>All Items</Link>
+                <Link to="/dashboard/lost" className={filterType === 'lost' ? 'btn-primary' : 'btn-secondary'} style={{ padding: '0.5rem 1rem' }}>Lost Items</Link>
+                <Link to="/dashboard/found" className={filterType === 'found' ? 'btn-primary' : 'btn-secondary'} style={{ padding: '0.5rem 1rem' }}>Found Items</Link>
+            </div>
+
             <div className="glass-card" style={{ padding: '2rem' }}>
-                <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>My Posted Items</h3>
+                <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+                    {filterType === 'lost' ? 'My Lost Items' : filterType === 'found' ? 'My Found Items' : 'My Posted Items'}
+                </h3>
 
                 {items.length === 0 ? (
-                    <p style={{ color: 'var(--text-secondary)' }}>You haven't posted any items yet.</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>You haven't posted any items here yet.</p>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {items.map(item => (

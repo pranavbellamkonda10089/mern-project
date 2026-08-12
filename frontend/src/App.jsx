@@ -16,6 +16,8 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard/lost" element={<Dashboard filterType="lost" />} />
+        <Route path="/dashboard/found" element={<Dashboard filterType="found" />} />
         <Route path="/post-lost" element={<PostItem type="lost" />} />
         <Route path="/post-found" element={<PostItem type="found" />} />
         <Route path="/item/:id" element={<ItemDetails />} />
