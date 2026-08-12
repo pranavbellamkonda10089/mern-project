@@ -9,21 +9,27 @@ const ItemDetails = () => {
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
     const [item, setItem] = useState(null);
+    const [messages, setMessages] = useState([]);
+    const [newMessage, setNewMessage] = useState('');
     const [claimMessage, setClaimMessage] = useState('');
     const [showClaimForm, setShowClaimForm] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
     useEffect(() => {
-        const fetchItem = async () => {
+        const fetchItemAndMessages = async () => {
             try {
-                const { data } = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}`);
-                setItem(data);
+                const [itemRes, msgRes] = await Promise.all([
+                    axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}`),
+                    axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/messages`)
+                ]);
+                setItem(itemRes.data);
+                setMessages(msgRes.data);
             } catch (err) {
                 console.error(err);
             }
         };
-        fetchItem();
+        fetchItemAndMessages();
     }, [id]);
 
     const handleClaim = async (e) => {
@@ -37,6 +43,19 @@ const ItemDetails = () => {
             setShowClaimForm(false);
         } catch (err) {
             setError(err.response?.data?.message || 'Error submitting claim');
+        }
+    };
+
+    const handleSendMessage = async (e) => {
+        e.preventDefault();
+        if (!newMessage.trim() || !user) return;
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            const { data } = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/messages`, { text: newMessage }, config);
+            setMessages([...messages, data]);
+            setNewMessage('');
+        } catch (err) {
+            console.error('Failed to send message');
         }
     };
 
@@ -128,6 +147,45 @@ const ItemDetails = () => {
                             {success && <div style={{ background: 'rgba(34, 197, 94, 0.1)', color: 'var(--success)', padding: '1rem', borderRadius: '8px', marginTop: '1rem' }}>{success}</div>}
                         </div>
                     )}
+
+                    <div style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid var(--border-color)' }}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                            <MessageSquare size={18} /> Clarifications & Chat
+                        </h3>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', maxHeight: '400px', overflowY: 'auto' }}>
+                            {messages.length === 0 ? (
+                                <p style={{ color: 'var(--text-muted)' }}>No messages yet. Ask a question about this item!</p>
+                            ) : (
+                                messages.map(msg => (
+                                    <div key={msg._id} style={{ padding: '1rem', borderRadius: 'var(--radius)', background: user?._id === msg.sender?._id ? 'rgba(99, 102, 241, 0.1)' : 'var(--bg-secondary)', alignSelf: user?._id === msg.sender?._id ? 'flex-end' : 'flex-start', minWidth: '250px', maxWidth: '80%' }}>
+                                        <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.8rem', fontWeight: 'bold', color: user?._id === msg.sender?._id ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
+                                            {msg.sender?.name} {user?._id === msg.sender?._id && '(You)'}
+                                        </p>
+                                        <p style={{ margin: 0, lineHeight: '1.4' }}>{msg.text}</p>
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.5rem', textAlign: 'right' }}>
+                                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        {user ? (
+                            <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '0.5rem' }}>
+                                <input
+                                    type="text"
+                                    placeholder="Type a message..."
+                                    value={newMessage}
+                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', outline: 'none' }}
+                                />
+                                <button type="submit" className="btn-primary" disabled={!newMessage.trim()}>Send</button>
+                            </form>
+                        ) : (
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Please log in to participate in the discussion.</p>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

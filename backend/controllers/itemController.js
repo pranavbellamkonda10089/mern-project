@@ -1,6 +1,7 @@
 const Item = require('../models/Item');
 const Claim = require('../models/Claim');
 const Exchange = require('../models/Exchange');
+const Message = require('../models/Message');
 
 const getItems = async (req, res) => {
     try {
@@ -141,4 +142,31 @@ const getExchanges = async (req, res) => {
     }
 };
 
-module.exports = { getItems, createItem, getItem, updateItemStatus, createClaim, getClaims, updateClaimStatus, getExchanges };
+const addMessage = async (req, res) => {
+    try {
+        const { text } = req.body;
+        const item = await Item.findById(req.params.id);
+        if (!item) return res.status(404).json({ message: 'Item not found' });
+
+        const message = await Message.create({
+            item: item._id,
+            sender: req.user._id,
+            text
+        });
+        const populatedMsg = await message.populate('sender', 'name');
+        res.status(201).json(populatedMsg);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error adding message' });
+    }
+};
+
+const getMessages = async (req, res) => {
+    try {
+        const messages = await Message.find({ item: req.params.id }).populate('sender', 'name').sort('createdAt');
+        res.status(200).json(messages);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error fetching messages' });
+    }
+};
+
+module.exports = { getItems, createItem, getItem, updateItemStatus, createClaim, getClaims, updateClaimStatus, getExchanges, addMessage, getMessages };
