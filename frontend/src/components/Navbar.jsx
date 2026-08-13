@@ -1,10 +1,22 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { Box, LogOut, User } from 'lucide-react';
 
 const Navbar = () => {
     const { user, logout } = useContext(AuthContext);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     return (
         <nav className="nav">
@@ -20,18 +32,30 @@ const Navbar = () => {
                         {user.role === 'admin' && (
                             <Link to="/admin" className="nav-link">Admin Panel</Link>
                         )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--surface-color)', padding: '0.35rem 0.35rem 0.35rem 1rem', borderRadius: '50px', border: '1px solid var(--border-color)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <div style={{ background: 'var(--bg-color)', padding: '0.25rem', borderRadius: '50%', display: 'flex' }}>
-                                    <User size={16} className="text-secondary" />
-                                </div>
-                                <span style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-color)', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {user.name}
-                                </span>
-                            </div>
-                            <button onClick={logout} className="btn-secondary" style={{ padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: 'none' }} title="Logout">
-                                <LogOut size={16} />
+                        <div style={{ position: 'relative' }} ref={dropdownRef}>
+                            <button
+                                onClick={() => setDropdownOpen(!dropdownOpen)}
+                                style={{ background: 'var(--surface-color)', padding: '0.5rem', borderRadius: '50%', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', color: 'var(--text-color)' }}
+                                title="Open Profile Menu"
+                            >
+                                <User size={20} />
                             </button>
+                            {dropdownOpen && (
+                                <div className="card animate-fade-in" style={{ position: 'absolute', top: 'calc(100% + 0.5rem)', right: '0', background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '1rem', minWidth: '200px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 100 }}>
+                                    <div style={{ marginBottom: '1rem', color: 'var(--text-color)' }}>
+                                        <div style={{ fontWeight: 'bold' }}>{user.name}</div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem', wordBreak: 'break-all' }}>{user.email}</div>
+                                    </div>
+                                    <div style={{ height: '1px', background: 'var(--border-color)', margin: '1rem -1rem' }}></div>
+                                    <button
+                                        onClick={logout}
+                                        className="btn-secondary"
+                                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: 'none' }}
+                                    >
+                                        <LogOut size={16} /> Logout
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </>
                 ) : (
