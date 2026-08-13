@@ -109,27 +109,36 @@ const Admin = () => {
                             ))}
                         </div>
                     ) : (
-                        <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr' }}>
+                        <div style={{ display: 'grid', gap: '1.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))' }}>
                             {exchanges.length === 0 ? <p>No exchanges recorded yet.</p> : exchanges.map(exchange => (
-                                <div key={exchange._id} className="card" style={{ padding: '1.5rem', display: 'flex', gap: '1.5rem', alignItems: 'center', background: 'var(--surface-color)' }}>
-                                    {exchange.itemId?.photoUrl && (
-                                        <img src={exchange.itemId.photoUrl} alt="Item" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: 'var(--radius)' }} />
-                                    )}
-                                    <div style={{ flex: 1 }}>
-                                        <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-color)' }}>{exchange.itemId?.title || 'Unknown Item'}</h3>
-                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                                            <p style={{ margin: 0 }}><strong>Found/Lost By:</strong> {exchange.posterId?.name} ({exchange.posterId?.email})</p>
-                                            <p style={{ margin: 0 }}><strong>Claimed By:</strong> {exchange.claimantId ? `${exchange.claimantId.name} (${exchange.claimantId.email})` : 'N/A'}</p>
-                                            <p style={{ margin: 0 }}><strong>Returned On:</strong> {new Date(exchange.createdAt).toLocaleString()}</p>
+                                <div key={exchange._id} className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--surface-color)' }}>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        {exchange.itemId?.photoUrl && (
+                                            <img src={exchange.itemId.photoUrl} alt="Item" style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: 'var(--radius)' }} />
+                                        )}
+                                        <div style={{ flex: 1 }}>
+                                            <h3 style={{ margin: '0 0 0.25rem 0', color: 'var(--text-color)', fontSize: '1.1rem' }}>{exchange.itemId?.title || 'Unknown Item'}</h3>
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Returned On: {new Date(exchange.createdAt).toLocaleDateString()}</span>
                                         </div>
+                                        <button
+                                            onClick={() => handleDeleteExchange(exchange._id)}
+                                            style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--danger)', cursor: 'pointer', padding: '0.6rem', borderRadius: 'var(--radius)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                                            title="Delete Exchange"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={() => handleDeleteExchange(exchange._id)}
-                                        style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0.5rem' }}
-                                        title="Delete Exchange"
-                                    >
-                                        <Trash2 size={24} />
-                                    </button>
+                                    <div style={{ padding: '1rem', background: 'var(--bg-color)', borderRadius: 'var(--radius)', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        <p style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>Found/Lost By</span>
+                                            <strong style={{ color: 'var(--text-color)' }}>{exchange.posterId?.name} <span style={{ fontWeight: 'normal', color: 'var(--text-muted)' }}>({exchange.posterId?.email})</span></strong>
+                                        </p>
+                                        <div style={{ height: '1px', background: 'var(--border-color)', margin: '0.25rem 0' }}></div>
+                                        <p style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>Claimed By</span>
+                                            <strong style={{ color: 'var(--text-color)' }}>{exchange.claimantId ? <>{exchange.claimantId.name} <span style={{ fontWeight: 'normal', color: 'var(--text-muted)' }}>({exchange.claimantId.email})</span></> : 'N/A'}</strong>
+                                        </p>
+                                    </div>
                                 </div>
                             ))}
                         </div>

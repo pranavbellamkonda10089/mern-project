@@ -62,11 +62,26 @@ const Home = () => {
                             />
                             <Search size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                         </div>
-                        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-                            <option value="">All Items</option>
-                            <option value="lost">Lost</option>
-                            <option value="found">Found</option>
-                        </select>
+                        <div style={{ display: 'flex', background: 'var(--surface-color)', padding: '0.25rem', borderRadius: '50px', border: '1px solid var(--border-color)' }}>
+                            <button
+                                onClick={() => setFilter('')}
+                                style={{ background: filter === '' ? 'var(--accent-primary)' : 'transparent', color: filter === '' ? '#fff' : 'var(--text-secondary)', padding: '0.5rem 1.5rem', borderRadius: '50px', border: 'none', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s' }}
+                            >
+                                All
+                            </button>
+                            <button
+                                onClick={() => setFilter('lost')}
+                                style={{ background: filter === 'lost' ? 'var(--accent-primary)' : 'transparent', color: filter === 'lost' ? '#fff' : 'var(--text-secondary)', padding: '0.5rem 1.5rem', borderRadius: '50px', border: 'none', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s' }}
+                            >
+                                Lost
+                            </button>
+                            <button
+                                onClick={() => setFilter('found')}
+                                style={{ background: filter === 'found' ? 'var(--accent-primary)' : 'transparent', color: filter === 'found' ? '#fff' : 'var(--text-secondary)', padding: '0.5rem 1.5rem', borderRadius: '50px', border: 'none', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s' }}
+                            >
+                                Found
+                            </button>
+                        </div>
                     </div>
                 </div>
 
