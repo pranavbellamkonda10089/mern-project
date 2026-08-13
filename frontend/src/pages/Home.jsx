@@ -31,7 +31,7 @@ const Home = () => {
         <div className="container animate-fade-in">
             <div className="hero">
                 <div className="hero-bg-blob"></div>
-                <h1 style={{ fontSize: '4rem', marginBottom: '1.5rem', color: 'white' }}>
+                <h1 style={{ fontSize: '4rem', marginBottom: '1.5rem', color: '#ffffffff' }}>
                     Find what you <span className="gradient-text">Lost</span>.<br />Return what you <span className="gradient-text">Found</span>.
                 </h1>
                 <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', marginBottom: '3rem', maxWidth: '600px', margin: '0 auto 3rem auto' }}>
