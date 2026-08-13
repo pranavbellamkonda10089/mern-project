@@ -20,7 +20,9 @@ const Admin = () => {
             });
             setExchanges(exchanges.filter(ex => ex._id !== id));
         } catch (err) {
-            alert('Failed to delete exchange');
+            console.error('Delete exchange error:', err);
+            const errorMsg = err.response?.data?.message || err.message || 'Unknown error';
+            alert(`Failed to delete exchange: ${errorMsg}`);
         }
     };
 
