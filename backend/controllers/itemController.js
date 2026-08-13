@@ -58,12 +58,15 @@ const updateItemStatus = async (req, res) => {
         await item.save();
 
         if (status === 'returned') {
-            const approvedClaim = await Claim.findOne({ itemId: item._id, status: 'approved' });
-            await Exchange.create({
-                itemId: item._id,
-                posterId: item.postedBy,
-                claimantId: approvedClaim ? approvedClaim.claimantId : null
-            });
+            const existingExchange = await Exchange.findOne({ itemId: item._id });
+            if (!existingExchange) {
+                const approvedClaim = await Claim.findOne({ itemId: item._id, status: 'approved' });
+                await Exchange.create({
+                    itemId: item._id,
+                    posterId: item.postedBy,
+                    claimantId: approvedClaim ? approvedClaim.claimantId : null
+                });
+            }
         }
 
         res.status(200).json(item);
@@ -118,6 +121,15 @@ const updateClaimStatus = async (req, res) => {
         if (status === 'approved') {
             item.status = 'claimed';
             await item.save();
+
+            const existingExchange = await Exchange.findOne({ itemId: item._id });
+            if (!existingExchange) {
+                await Exchange.create({
+                    itemId: item._id,
+                    posterId: item.postedBy,
+                    claimantId: claim.claimantId
+                });
+            }
         }
 
         res.status(200).json(claim);
