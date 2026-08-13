@@ -41,9 +41,12 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const googleLogin = async (credential) => {
+    const googleLogin = async (credential, role = null) => {
         try {
-            const { data } = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/google`, { credential });
+            const { data } = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/google`, { credential, role });
+            if (data.isNewUser) {
+                return { success: true, isNewUser: true };
+            }
             setUser(data);
             localStorage.setItem('userInfo', JSON.stringify(data));
             navigate('/dashboard');
