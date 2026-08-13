@@ -142,6 +142,21 @@ const getExchanges = async (req, res) => {
     }
 };
 
+const deleteExchange = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Not authorized as admin' });
+        }
+        const exchange = await Exchange.findByIdAndDelete(req.params.id);
+        if (!exchange) {
+            return res.status(404).json({ message: 'Exchange not found' });
+        }
+        res.status(200).json({ message: 'Exchange deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error deleting exchange' });
+    }
+};
+
 const addMessage = async (req, res) => {
     try {
         const { text } = req.body;
@@ -169,4 +184,4 @@ const getMessages = async (req, res) => {
     }
 };
 
-module.exports = { getItems, createItem, getItem, updateItemStatus, createClaim, getClaims, updateClaimStatus, getExchanges, addMessage, getMessages };
+module.exports = { getItems, createItem, getItem, updateItemStatus, createClaim, getClaims, updateClaimStatus, getExchanges, deleteExchange, addMessage, getMessages };

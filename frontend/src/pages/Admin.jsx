@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Users, Shield, User as UserIcon } from 'lucide-react';
+import { Users, Shield, User as UserIcon, Trash2 } from 'lucide-react';
 
 const Admin = () => {
     const { user, loading } = useContext(AuthContext);
@@ -11,6 +11,18 @@ const Admin = () => {
     const [activeTab, setActiveTab] = useState('members');
     const [fetching, setFetching] = useState(true);
     const [error, setError] = useState('');
+
+    const handleDeleteExchange = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this exchange record?")) return;
+        try {
+            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/exchanges/${id}`, {
+                headers: { Authorization: `Bearer ${user.token}` }
+            });
+            setExchanges(exchanges.filter(ex => ex._id !== id));
+        } catch (err) {
+            alert('Failed to delete exchange');
+        }
+    };
 
     useEffect(() => {
         const fetchMembers = async () => {
@@ -109,6 +121,13 @@ const Admin = () => {
                                             <p style={{ margin: 0 }}><strong>Returned On:</strong> {new Date(exchange.createdAt).toLocaleString()}</p>
                                         </div>
                                     </div>
+                                    <button
+                                        onClick={() => handleDeleteExchange(exchange._id)}
+                                        style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0.5rem' }}
+                                        title="Delete Exchange"
+                                    >
+                                        <Trash2 size={24} />
+                                    </button>
                                 </div>
                             ))}
                         </div>
