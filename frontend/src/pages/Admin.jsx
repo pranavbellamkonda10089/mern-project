@@ -147,12 +147,16 @@ const Admin = () => {
                                     </div>
                                     <div style={{ padding: '1rem', background: 'var(--bg-color)', borderRadius: 'var(--radius)', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                         <p style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>Found/Lost By</span>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>
+                                                {exchange.itemId?.type === 'lost' ? 'Lost By (Poster)' : 'Found By (Poster)'}
+                                            </span>
                                             <strong style={{ color: 'var(--text-color)' }}>{exchange.posterId?.name} <span style={{ fontWeight: 'normal', color: 'var(--text-muted)' }}>({exchange.posterId?.email})</span></strong>
                                         </p>
                                         <div style={{ height: '1px', background: 'var(--border-color)', margin: '0.25rem 0' }}></div>
                                         <p style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>Claimed By</span>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>
+                                                {exchange.itemId?.type === 'lost' ? 'Found & Returned By' : 'Claimed By'}
+                                            </span>
                                             <strong style={{ color: 'var(--text-color)' }}>{exchange.claimantId ? <>{exchange.claimantId.name} <span style={{ fontWeight: 'normal', color: 'var(--text-muted)' }}>({exchange.claimantId.email})</span></> : 'N/A'}</strong>
                                         </p>
                                     </div>
