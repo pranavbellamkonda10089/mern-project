@@ -71,15 +71,30 @@ const Admin = () => {
                 </div>
             ) : (
                 <>
-                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-                        <button onClick={() => setActiveTab('members')} className={activeTab === 'members' ? 'btn-primary' : 'btn-secondary'}>Members</button>
-                        <button onClick={() => setActiveTab('exchanges')} className={activeTab === 'exchanges' ? 'btn-primary' : 'btn-secondary'}>Exchanges History</button>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+                        <div className="card" style={{ padding: '1.5rem', background: 'var(--surface-color)', borderLeft: '4px solid var(--accent-primary)', display: 'flex', flexDirection: 'column', borderRadius: 'var(--radius)' }}>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>Total Members</span>
+                            <span style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--text-color)', marginTop: '0.5rem' }}>{members.length}</span>
+                        </div>
+                        <div className="card" style={{ padding: '1.5rem', background: 'var(--surface-color)', borderLeft: '4px solid var(--success)', display: 'flex', flexDirection: 'column', borderRadius: 'var(--radius)' }}>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>Total Exchanges</span>
+                            <span style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--text-color)', marginTop: '0.5rem' }}>{exchanges.length}</span>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '2rem', background: 'var(--surface-color)', padding: '0.35rem', borderRadius: '50px', border: '1px solid var(--border-color)', width: 'fit-content' }}>
+                        <button onClick={() => setActiveTab('members')} style={{ padding: '0.5rem 1.5rem', borderRadius: '50px', border: 'none', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s', background: activeTab === 'members' ? 'var(--accent-primary)' : 'transparent', color: activeTab === 'members' ? '#fff' : 'var(--text-secondary)' }}>
+                            Members
+                        </button>
+                        <button onClick={() => setActiveTab('exchanges')} style={{ padding: '0.5rem 1.5rem', borderRadius: '50px', border: 'none', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s', background: activeTab === 'exchanges' ? 'var(--accent-primary)' : 'transparent', color: activeTab === 'exchanges' ? '#fff' : 'var(--text-secondary)' }}>
+                            Exchanges History
+                        </button>
                     </div>
 
                     {activeTab === 'members' ? (
-                        <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                        <div style={{ display: 'grid', gap: '1.5rem', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
                             {members.map(member => (
-                                <div key={member._id} className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div key={member._id} className="card animate-fade-in" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', background: 'var(--surface-color)', border: '1px solid var(--border-color)' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                         <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--surface-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)' }}>
                                             <UserIcon size={20} className="text-secondary" />
@@ -89,18 +104,20 @@ const Admin = () => {
                                             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>{member.role === 'admin' ? 'Admin' : 'Student'}</p>
                                         </div>
                                     </div>
-                                    <div style={{ padding: '1rem', background: 'var(--bg-color)', borderRadius: 'var(--radius)', fontSize: '0.95rem' }}>
-                                        <p style={{ margin: '0 0 0.5rem 0', display: 'flex', justifyContent: 'space-between' }}>
-                                            <span style={{ color: 'var(--text-muted)' }}>Email:</span>
-                                            <span>{member.email}</span>
+                                    <div style={{ padding: '1rem', background: 'var(--bg-color)', borderRadius: 'var(--radius)', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        <p style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ color: 'var(--text-muted)', fontWeight: '500' }}>Email</span>
+                                            <span style={{ color: 'var(--text-color)', wordBreak: 'break-all', textAlign: 'right', maxWidth: '60%' }}>{member.email}</span>
                                         </p>
-                                        <p style={{ margin: '0 0 0.5rem 0', display: 'flex', justifyContent: 'space-between' }}>
-                                            <span style={{ color: 'var(--text-muted)' }}>Joined:</span>
-                                            <span>{new Date(member.createdAt).toLocaleDateString()}</span>
+                                        <div style={{ height: '1px', background: 'var(--border-color)', margin: '0' }}></div>
+                                        <p style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ color: 'var(--text-muted)', fontWeight: '500' }}>Joined</span>
+                                            <span style={{ color: 'var(--text-color)' }}>{new Date(member.createdAt).toLocaleDateString()}</span>
                                         </p>
-                                        <p style={{ margin: '0', display: 'flex', justifyContent: 'space-between' }}>
-                                            <span style={{ color: 'var(--text-muted)' }}>Status:</span>
-                                            <span style={{ color: member.blocked ? 'var(--red)' : 'var(--green)' }}>
+                                        <div style={{ height: '1px', background: 'var(--border-color)', margin: '0' }}></div>
+                                        <p style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ color: 'var(--text-muted)', fontWeight: '500' }}>Status</span>
+                                            <span className="badge" style={{ background: member.blocked ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)', color: member.blocked ? 'var(--danger)' : 'var(--success)' }}>
                                                 {member.blocked ? 'Blocked' : 'Active'}
                                             </span>
                                         </p>
@@ -111,7 +128,7 @@ const Admin = () => {
                     ) : (
                         <div style={{ display: 'grid', gap: '1.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))' }}>
                             {exchanges.length === 0 ? <p>No exchanges recorded yet.</p> : exchanges.map(exchange => (
-                                <div key={exchange._id} className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--surface-color)' }}>
+                                <div key={exchange._id} className="card animate-fade-in" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)' }}>
                                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                                         {exchange.itemId?.photoUrl && (
                                             <img src={exchange.itemId.photoUrl} alt="Item" style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: 'var(--radius)' }} />
