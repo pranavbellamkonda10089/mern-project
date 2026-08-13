@@ -47,7 +47,7 @@ const ItemDetails = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
             await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/claim`, { message: claimMessage }, config);
-            setSuccess(item.type === 'lost' ? 'Report submitted successfully. The poster will review it.' : 'Claim submitted successfully. The poster will review it.');
+            setSuccess('Claim submitted successfully. The poster will review it.');
             setShowClaimForm(false);
         } catch (err) {
             setError(err.response?.data?.message || 'Error submitting claim');
@@ -141,15 +141,15 @@ const ItemDetails = () => {
                         <p style={{ color: 'var(--text-secondary)', lineHeight: '1.7' }}>{item.description}</p>
                     </div>
 
-                    {user && user._id !== (item.postedBy?._id || item.postedBy) && item.status === 'active' && (
+                    {user && user._id !== (item.postedBy?._id || item.postedBy) && item.status === 'active' && item.type !== 'lost' && (
                         <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>
                             {!showClaimForm ? (
                                 <button className="btn-primary" onClick={() => setShowClaimForm(true)} style={{ width: '100%', padding: '1rem' }}>
-                                    <MessageSquare size={18} /> {item.type === 'lost' ? 'Report this item as found' : 'Claim this Item'}
+                                    <MessageSquare size={18} /> Claim this Item
                                 </button>
                             ) : (
                                 <form onSubmit={handleClaim} style={{ background: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: 'var(--border-radius-sm)' }}>
-                                    <h4 style={{ marginBottom: '1rem' }}>{item.type === 'lost' ? 'Report as Found Verification' : 'Claim Verification'}</h4>
+                                    <h4 style={{ marginBottom: '1rem' }}>Claim Verification</h4>
                                     {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</div>}
                                     {item.type === 'found' && item.claimQuestion && (
                                         <div style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg-primary)', borderRadius: '4px', borderLeft: '4px solid var(--accent-primary)' }}>
@@ -159,10 +159,10 @@ const ItemDetails = () => {
                                     )}
                                     <div className="form-group">
                                         <label>Your Message / Answer</label>
-                                        <textarea rows="3" placeholder={item.type === 'lost' ? 'Provide details about where/when you found it...' : 'Explain why this is yours or answer the security question...'} value={claimMessage} onChange={e => setClaimMessage(e.target.value)} required />
+                                        <textarea rows="3" placeholder="Explain why this is yours or answer the security question..." value={claimMessage} onChange={e => setClaimMessage(e.target.value)} required />
                                     </div>
                                     <div style={{ display: 'flex', gap: '1rem' }}>
-                                        <button type="submit" className="btn-primary" style={{ flex: 1 }}>{item.type === 'lost' ? 'Submit Report' : 'Submit Claim'}</button>
+                                        <button type="submit" className="btn-primary" style={{ flex: 1 }}>Submit Claim</button>
                                         <button type="button" className="btn-secondary" onClick={() => setShowClaimForm(false)}>Cancel</button>
                                     </div>
                                 </form>
