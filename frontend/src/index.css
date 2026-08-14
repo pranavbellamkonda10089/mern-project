@@ -19,6 +19,8 @@
   --border-radius-lg: 24px;
   
   --border-color: rgba(255, 255, 255, 0.1);
+  --surface-color: rgba(30, 41, 59, 0.92);
+  --surface-glass: rgba(15, 23, 42, 0.9);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
@@ -156,6 +158,59 @@ input:focus, textarea:focus, select:focus {
 }
 
 .nav-link:hover {
+  color: var(--text-primary);
+}
+
+.nav-profile-btn {
+  background: rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 0.55rem;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-primary);
+}
+
+.nav-profile-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.5);
+  color: #ffffff;
+}
+
+.nav-dropdown {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--border-radius-md);
+  padding: 1.25rem;
+  min-width: 240px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+}
+
+.nav-dropdown-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--border-radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.nav-dropdown-link:hover {
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-primary);
 }
 
