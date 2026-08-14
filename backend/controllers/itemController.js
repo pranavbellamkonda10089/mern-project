@@ -153,25 +153,49 @@ const updateItemStatus = async (req, res) => {
 
 const createClaim = async (req, res) => {
     try {
-        const { message } = req.body;
+        const { message, dropLocation, responseType } = req.body;
         const item = await Item.findById(req.params.id);
         if (!item) return res.status(404).json({ message: 'Item not found' });
 
         if (item.postedBy.toString() === req.user._id.toString()) {
-            return res.status(400).json({ message: 'You cannot claim your own item' });
+            return res.status(400).json({
+                message: item.type === 'lost'
+                    ? 'You cannot respond to your own lost item'
+                    : 'You cannot claim your own item'
+            });
         }
 
         const claimExists = await Claim.findOne({ itemId: item._id, claimantId: req.user._id });
-        if (claimExists) return res.status(400).json({ message: 'Already submitted a claim/request for this item' });
+        if (claimExists) {
+            return res.status(400).json({
+                message: item.type === 'lost'
+                    ? 'You have already submitted a response for this item'
+                    : 'You have already submitted a claim for this item'
+            });
+        }
+
+        let photoUrl = '';
+        if (req.file) {
+            photoUrl = req.file.path;
+        }
+
+        const effectiveResponseType = responseType || (item.type === 'lost' ? 'finder_response' : 'claim_request');
+        const effectiveMessage = message || (item.type === 'lost' ? 'I found your item!' : '');
 
         const claim = await Claim.create({
             itemId: item._id,
             claimantId: req.user._id,
-            message
+            message: effectiveMessage,
+            dropLocation: dropLocation || '',
+            photoUrl: photoUrl || '',
+            responseType: effectiveResponseType
         });
-        res.status(201).json(claim);
+
+        const populatedClaim = await Claim.findById(claim._id).populate('claimantId', 'name email');
+        res.status(201).json(populatedClaim);
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        console.error('Error creating claim/response:', error);
+        res.status(500).json({ message: 'Server error creating claim/response' });
     }
 };
 

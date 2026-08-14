@@ -719,9 +719,21 @@ const Admin = () => {
                                                         {claim.status}
                                                     </span>
                                                 </div>
+                                                {claim.dropLocation && (
+                                                    <p style={{ margin: '0 0 0.4rem 0', fontSize: '0.8rem', color: 'var(--accent-primary)' }}>
+                                                        <strong>Location:</strong> {claim.dropLocation}
+                                                    </p>
+                                                )}
                                                 <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
                                                     "{claim.message}"
                                                 </p>
+                                                {claim.photoUrl && (
+                                                    <div style={{ marginBottom: '0.5rem' }}>
+                                                        <a href={claim.photoUrl} target="_blank" rel="noopener noreferrer">
+                                                            <img src={claim.photoUrl} alt="Finder proof" style={{ width: '60px', height: '60px', borderRadius: '6px', objectFit: 'cover' }} />
+                                                        </a>
+                                                    </div>
+                                                )}
                                                 <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                                     By: {claim.claimantId?.name} ({claim.claimantId?.email}) • {new Date(claim.createdAt).toLocaleDateString()}
                                                 </p>

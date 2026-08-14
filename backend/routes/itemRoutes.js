@@ -24,7 +24,7 @@ router.route('/exchanges').get(protect, admin, getExchanges);
 router.route('/exchanges/:id').delete(protect, admin, deleteExchange);
 router.route('/:id').get(getItem).delete(protect, deleteItem);
 router.route('/:id/status').patch(protect, updateItemStatus);
-router.route('/:id/claim').post(protect, createClaim).get(protect, getClaims);
+router.route('/:id/claim').post(protect, upload.single('image'), createClaim).get(protect, getClaims);
 router.route('/claim/:claimId').patch(protect, updateClaimStatus);
 router.route('/:id/messages').post(protect, addMessage).get(getMessages);
 
