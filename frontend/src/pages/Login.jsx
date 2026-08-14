@@ -2,12 +2,14 @@ import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
+import { Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
     const [isLogin, setIsLogin] = useState(true);
     const { login, register, googleLogin, user } = useContext(AuthContext);
 
     const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'student' });
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
 
     if (user) return <Navigate to="/dashboard" />;
@@ -67,7 +69,36 @@ const Login = () => {
                     </div>
                     <div className="form-group">
                         <label>Password</label>
-                        <input type="password" placeholder="••••••••" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required />
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="••••••••"
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                style={{ width: '100%', paddingRight: '2.75rem' }}
+                                required
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                style={{
+                                    position: 'absolute',
+                                    right: '0.75rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'var(--text-secondary)',
+                                    padding: '0.25rem',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    cursor: 'pointer'
+                                }}
+                                title={showPassword ? 'Hide password' : 'Show password'}
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
                     </div>
                     <button type="submit" className="btn-primary" style={{ marginTop: '1rem', width: '100%' }}>
                         {isLogin ? 'Login' : 'Sign Up'}
