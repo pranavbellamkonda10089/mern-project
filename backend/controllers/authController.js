@@ -126,4 +126,33 @@ const toggleBlockUser = async (req, res) => {
     }
 };
 
-module.exports = { register, login, getUser, getAllUsers, googleLogin, toggleBlockUser };
+const Item = require('../models/Item');
+const Claim = require('../models/Claim');
+const Message = require('../models/Message');
+const Report = require('../models/Report');
+
+const deleteUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        // Prevent admin from deleting their own account
+        if (user._id.toString() === req.user._id.toString()) {
+            return res.status(400).json({ message: 'You cannot delete your own admin account' });
+        }
+
+        // Delete user and cascade clean associated data
+        await User.findByIdAndDelete(req.params.id);
+        await Item.deleteMany({ postedBy: req.params.id });
+        await Claim.deleteMany({ claimantId: req.params.id });
+        await Message.deleteMany({ sender: req.params.id });
+        await Report.deleteMany({ reportedBy: req.params.id });
+
+        res.status(200).json({ message: `Account for ${user.name} (${user.email}) deleted successfully` });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({ message: 'Server error deleting user account' });
+    }
+};
+
+module.exports = { register, login, getUser, getAllUsers, googleLogin, toggleBlockUser, deleteUser };

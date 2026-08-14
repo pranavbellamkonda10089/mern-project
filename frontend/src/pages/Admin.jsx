@@ -12,7 +12,8 @@ import {
     Unlock,
     ExternalLink,
     Search,
-    Repeat
+    Repeat,
+    UserX
 } from 'lucide-react';
 
 const Admin = () => {
@@ -80,6 +81,21 @@ const Admin = () => {
             setMembers(members.map(m => m._id === userId ? data.user : m));
         } catch (err) {
             alert(err.response?.data?.message || 'Error updating user block status');
+        }
+    };
+
+    // User Moderation: Delete Student Account
+    const handleDeleteUser = async (userId, userName) => {
+        if (!window.confirm(`Are you sure you want to permanently delete the account for "${userName}"? This will remove all their posted items, claims, and messages.`)) return;
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/users/${userId}`, config);
+            setMembers(members.filter(m => m._id !== userId));
+            setItems(items.filter(i => (i.postedBy?._id || i.postedBy) !== userId));
+            setReports(reports.filter(r => (r.reportedBy?._id || r.reportedBy) !== userId));
+            setClaims(claims.filter(c => (c.claimantId?._id || c.claimantId) !== userId));
+        } catch (err) {
+            alert(err.response?.data?.message || 'Error deleting user account');
         }
     };
 
@@ -591,29 +607,52 @@ const Admin = () => {
                                         </div>
 
                                         {member._id !== user._id && (
-                                            <button
-                                                onClick={() => handleToggleBlockUser(member._id)}
-                                                className="btn-secondary"
-                                                style={{
-                                                    width: '100%',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    gap: '0.5rem',
-                                                    color: member.blocked ? 'var(--success)' : 'var(--danger)',
-                                                    borderColor: member.blocked ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'
-                                                }}
-                                            >
-                                                {member.blocked ? (
-                                                    <>
-                                                        <Unlock size={16} /> Unblock Student
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Lock size={16} /> Block Student
-                                                    </>
-                                                )}
-                                            </button>
+                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                <button
+                                                    onClick={() => handleToggleBlockUser(member._id)}
+                                                    className="btn-secondary"
+                                                    style={{
+                                                        flex: 1,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '0.4rem',
+                                                        fontSize: '0.85rem',
+                                                        padding: '0.6rem',
+                                                        color: member.blocked ? 'var(--success)' : 'var(--warning)',
+                                                        borderColor: member.blocked ? 'rgba(34, 197, 94, 0.3)' : 'rgba(245, 158, 11, 0.3)'
+                                                    }}
+                                                >
+                                                    {member.blocked ? (
+                                                        <>
+                                                            <Unlock size={14} /> Unblock
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Lock size={14} /> Block
+                                                        </>
+                                                    )}
+                                                </button>
+
+                                                <button
+                                                    onClick={() => handleDeleteUser(member._id, member.name)}
+                                                    className="btn-secondary"
+                                                    style={{
+                                                        flex: 1,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '0.4rem',
+                                                        fontSize: '0.85rem',
+                                                        padding: '0.6rem',
+                                                        color: 'var(--danger)',
+                                                        borderColor: 'rgba(239, 68, 68, 0.3)'
+                                                    }}
+                                                    title="Delete Student Account"
+                                                >
+                                                    <UserX size={14} /> Delete Account
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                 ))}
