@@ -108,4 +108,22 @@ const googleLogin = async (req, res) => {
     }
 };
 
-module.exports = { register, login, getUser, getAllUsers, googleLogin };
+const toggleBlockUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        
+        // Prevent admin from blocking themselves
+        if (user._id.toString() === req.user._id.toString()) {
+            return res.status(400).json({ message: 'You cannot block your own account' });
+        }
+
+        user.blocked = !user.blocked;
+        await user.save();
+        res.status(200).json({ message: `User ${user.blocked ? 'blocked' : 'unblocked'} successfully`, user });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error updating user status' });
+    }
+};
+
+module.exports = { register, login, getUser, getAllUsers, googleLogin, toggleBlockUser };

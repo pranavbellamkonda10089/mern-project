@@ -1,44 +1,77 @@
-import React, { useEffect, useState, useContext } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useContext, useRef } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { MapPin, Calendar, User, Info, MessageSquare } from 'lucide-react';
+import {
+    MapPin,
+    Calendar,
+    User,
+    Info,
+    MessageSquare,
+    QrCode,
+    Flag,
+    Trash2,
+    CheckCircle,
+    Copy,
+    Printer,
+    X,
+    Palette,
+    Tag,
+    ShieldCheck
+} from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 const ItemDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
+
     const [item, setItem] = useState(null);
     const [messages, setMessages] = useState([]);
     const [claims, setClaims] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [claimMessage, setClaimMessage] = useState('');
     const [showClaimForm, setShowClaimForm] = useState(false);
+
+    // Modals
+    const [showQrModal, setShowQrModal] = useState(false);
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [reportReason, setReportReason] = useState('Spam / Misleading');
+    const [reportDetails, setReportDetails] = useState('');
+
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [reportSuccess, setReportSuccess] = useState('');
+    const [copied, setCopied] = useState(false);
+
+    const printRef = useRef(null);
 
     useEffect(() => {
-        const fetchItemAndMessages = async () => {
-            try {
-                const [itemRes, msgRes] = await Promise.all([
-                    axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}`),
-                    axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/messages`)
-                ]);
-                setItem(itemRes.data);
-                setMessages(msgRes.data);
-
-                // Fetch claims if user is the poster
-                const posterId = itemRes.data.postedBy?._id || itemRes.data.postedBy;
-                if (user && user._id === posterId) {
-                    const claimsRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/claim`, { headers: { Authorization: `Bearer ${user.token}` } });
-                    setClaims(claimsRes.data);
-                }
-            } catch (err) {
-                console.error(err);
-            }
-        };
         fetchItemAndMessages();
     }, [id, user]);
+
+    const fetchItemAndMessages = async () => {
+        try {
+            const [itemRes, msgRes] = await Promise.all([
+                axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}`),
+                axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/messages`)
+            ]);
+            setItem(itemRes.data);
+            setMessages(msgRes.data);
+
+            // Fetch claims if user is the poster or an admin
+            const posterId = itemRes.data.postedBy?._id || itemRes.data.postedBy;
+            if (user && (user._id === posterId || user.role === 'admin')) {
+                const claimsRes = await axios.get(
+                    `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/claim`,
+                    { headers: { Authorization: `Bearer ${user.token}` } }
+                );
+                setClaims(claimsRes.data);
+            }
+        } catch (err) {
+            console.error('Error fetching item details:', err);
+        }
+    };
 
     const handleClaim = async (e) => {
         e.preventDefault();
@@ -46,9 +79,14 @@ const ItemDetails = () => {
         setSuccess('');
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/claim`, { message: claimMessage }, config);
-            setSuccess(item.type === 'lost' ? 'Request sent! The owner will respond soon.' : 'Claim submitted successfully. The poster will review it.');
+            await axios.post(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/claim`,
+                { message: claimMessage },
+                config
+            );
+            setSuccess(item.type === 'lost' ? 'Verification request sent to the owner!' : 'Claim submitted successfully. The poster will review your answer.');
             setShowClaimForm(false);
+            setClaimMessage('');
         } catch (err) {
             setError(err.response?.data?.message || 'Error submitting claim');
         }
@@ -59,7 +97,11 @@ const ItemDetails = () => {
         if (!newMessage.trim() || !user) return;
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/messages`, { text: newMessage }, config);
+            const { data } = await axios.post(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/messages`,
+                { text: newMessage },
+                config
+            );
             setMessages([...messages, data]);
             setNewMessage('');
         } catch (err) {
@@ -70,105 +112,412 @@ const ItemDetails = () => {
     const handleUpdateClaim = async (claimId, newStatus) => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.patch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/claim/${claimId}`, { status: newStatus }, config);
-
-            // Refetch claims and items to reflect changes
-            const claimsRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/claim`, config);
-            setClaims(claimsRes.data);
-            const itemRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}`);
-            setItem(itemRes.data);
+            await axios.patch(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/claim/${claimId}`,
+                { status: newStatus },
+                config
+            );
+            fetchItemAndMessages();
         } catch (err) {
-            console.error('Failed to update claim status');
+            console.error('Failed to update claim status:', err);
         }
     };
 
-    if (!item) return <div className="container" style={{ textAlign: 'center', marginTop: '10vh' }}>Loading...</div>;
+    const handleMarkReturned = async () => {
+        if (!window.confirm('Mark this item as successfully returned? This will close active claims and record the exchange.')) return;
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.patch(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/status`,
+                { status: 'returned' },
+                config
+            );
+            fetchItemAndMessages();
+        } catch (err) {
+            console.error('Failed to mark as returned:', err);
+        }
+    };
+
+    const handleDeleteItem = async () => {
+        if (!window.confirm('Are you sure you want to delete this listing permanently?')) return;
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.delete(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}`,
+                config
+            );
+            navigate('/dashboard');
+        } catch (err) {
+            alert('Failed to delete item: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
+    const handleReportSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            const fullReason = reportDetails ? `${reportReason}: ${reportDetails}` : reportReason;
+            await axios.post(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/reports`,
+                { itemId: id, reason: fullReason },
+                config
+            );
+            setReportSuccess('Report submitted for admin review. Thank you for keeping our campus safe.');
+            setTimeout(() => {
+                setShowReportModal(false);
+                setReportSuccess('');
+                setReportDetails('');
+            }, 2000);
+        } catch (err) {
+            alert(err.response?.data?.message || 'Error submitting report');
+        }
+    };
+
+    const itemUrl = window.location.href;
+
+    const copyItemUrl = () => {
+        navigator.clipboard.writeText(itemUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handlePrintTag = () => {
+        window.print();
+    };
+
+    if (!item) return <div className="container" style={{ textAlign: 'center', marginTop: '10vh' }}>Loading item details...</div>;
+
+    const isOwner = user && (user._id === (item.postedBy?._id || item.postedBy));
+    const isAdmin = user && user.role === 'admin';
 
     return (
-        <div className="container animate-fade-in" style={{ maxWidth: '900px' }}>
+        <div className="container animate-fade-in" style={{ maxWidth: '960px' }}>
+            {/* QR Tag Modal */}
+            {showQrModal && (
+                <div className="modal-backdrop" onClick={() => setShowQrModal(false)}>
+                    <div className="modal-card animate-fade-in" onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <QrCode size={20} color="var(--accent-primary)" /> Campus Return QR Tag
+                            </h3>
+                            <button onClick={() => setShowQrModal(false)} style={{ color: 'var(--text-muted)' }}>
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                            Print or attach this QR tag to your belongings (ID card, laptop, bottle, keys). Anyone who scans it will directly open this item page to contact you or return it!
+                        </p>
+
+                        <div ref={printRef} className="printable-tag">
+                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.25rem', color: '#1e293b' }}>
+                                Campus<span style={{ color: '#6366f1' }}>Crate</span> Return Tag
+                            </div>
+                            <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 1rem 0' }}>
+                                If found, scan QR code to notify owner
+                            </p>
+
+                            <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '8px', display: 'inline-block', border: '1px solid #e2e8f0' }}>
+                                <QRCodeSVG value={itemUrl} size={180} level="H" includeMargin={true} />
+                            </div>
+
+                            <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                                <strong style={{ display: 'block', fontSize: '1rem', color: '#0f172a' }}>{item.title}</strong>
+                                <span style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'capitalize' }}>Category: {item.category.replace('_', ' ')}</span>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                            <button onClick={copyItemUrl} className="btn-secondary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                {copied ? <CheckCircle size={16} color="var(--success)" /> : <Copy size={16} />}
+                                {copied ? 'Link Copied!' : 'Copy Item Link'}
+                            </button>
+                            <button onClick={handlePrintTag} className="btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                <Printer size={16} /> Print Tag
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Report Abuse Modal */}
+            {showReportModal && (
+                <div className="modal-backdrop" onClick={() => setShowReportModal(false)}>
+                    <div className="modal-card animate-fade-in" onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)' }}>
+                                <Flag size={20} /> Report Listing to Admin
+                            </h3>
+                            <button onClick={() => setShowReportModal(false)} style={{ color: 'var(--text-muted)' }}>
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {reportSuccess ? (
+                            <div style={{ background: 'rgba(34, 197, 94, 0.1)', color: 'var(--success)', padding: '1rem', borderRadius: '8px', textAlign: 'center' }}>
+                                {reportSuccess}
+                            </div>
+                        ) : (
+                            <form onSubmit={handleReportSubmit}>
+                                <div className="form-group">
+                                    <label>Reason for Report *</label>
+                                    <select value={reportReason} onChange={e => setReportReason(e.target.value)}>
+                                        <option value="Spam / Misleading">Spam / Misleading / Duplicate</option>
+                                        <option value="Fake / Fraudulent Item">Fake / Fraudulent Item</option>
+                                        <option value="Inappropriate / Abusive Content">Inappropriate / Abusive Content</option>
+                                        <option value="Harassment / Impersonation">Harassment / Impersonation</option>
+                                        <option value="Already Returned">Already Returned / Expired</option>
+                                        <option value="Other Policy Violation">Other Policy Violation</option>
+                                    </select>
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Additional Details (Optional)</label>
+                                    <textarea
+                                        rows="3"
+                                        placeholder="Explain why this post violates guidelines..."
+                                        value={reportDetails}
+                                        onChange={e => setReportDetails(e.target.value)}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                                    <button type="submit" className="btn-primary" style={{ flex: 1, background: 'var(--danger)' }}>
+                                        Submit Report
+                                    </button>
+                                    <button type="button" className="btn-secondary" onClick={() => setShowReportModal(false)}>
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Main Item View */}
             <div className="glass-card" style={{ overflow: 'hidden' }}>
                 <div
                     style={{
                         height: '350px',
-                        background: `url(${item.photoUrl || 'https://images.unsplash.com/photo-1614728447814-74971c24ed6a'}) center/cover`,
+                        background: `url(${item.photoUrl || 'https://images.unsplash.com/photo-1614728447814-74971c24ed6a?auto=format&fit=crop&w=1200&q=80'}) center/cover`,
+                        position: 'relative'
                     }}
-                />
+                >
+                    <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', display: 'flex', gap: '0.75rem' }}>
+                        <button
+                            onClick={() => setShowQrModal(true)}
+                            className="btn-secondary"
+                            style={{ background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
+                            title="Generate QR Tag"
+                        >
+                            <QrCode size={16} /> QR Tag
+                        </button>
+                        {user && !isOwner && (
+                            <button
+                                onClick={() => setShowReportModal(true)}
+                                className="btn-secondary"
+                                style={{ background: 'rgba(239, 68, 68, 0.2)', borderColor: 'rgba(239, 68, 68, 0.4)', color: 'var(--danger)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
+                                title="Report Abuse"
+                            >
+                                <Flag size={16} /> Report
+                            </button>
+                        )}
+                        {(isOwner || isAdmin) && (
+                            <button
+                                onClick={handleDeleteItem}
+                                className="btn-secondary"
+                                style={{ background: 'rgba(239, 68, 68, 0.2)', borderColor: 'rgba(239, 68, 68, 0.4)', color: 'var(--danger)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
+                                title="Delete Item"
+                            >
+                                <Trash2 size={16} /> Delete
+                            </button>
+                        )}
+                    </div>
+                </div>
+
                 <div style={{ padding: '2.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                         <div>
-                            <span className={`badge badge-${item.type}`} style={{ marginBottom: '1rem', display: 'inline-block' }}>{item.type}</span>
-                            <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>{item.title}</h1>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                <span className={`badge badge-${item.type}`}>{item.type}</span>
+                                <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.1)', color: 'var(--accent-primary)' }}>
+                                    {item.category.replace('_', ' ')}
+                                </span>
+                            </div>
+                            <h1 style={{ fontSize: '2.4rem', marginBottom: '0.5rem' }}>{item.title}</h1>
                         </div>
-                        <span className="badge" style={{ background: item.status === 'active' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(34, 197, 94, 0.1)', color: item.status === 'active' ? 'var(--accent-primary)' : 'var(--success)', border: `1px solid ${item.status === 'active' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(34, 197, 94, 0.2)'}` }}>
-                            {item.status.toUpperCase()}
-                        </span>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <span
+                                className="badge"
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    fontSize: '0.85rem',
+                                    background: item.status === 'returned'
+                                        ? 'rgba(34, 197, 94, 0.15)'
+                                        : item.status === 'claimed'
+                                        ? 'rgba(234, 179, 8, 0.15)'
+                                        : 'rgba(99, 102, 241, 0.15)',
+                                    color: item.status === 'returned'
+                                        ? 'var(--success)'
+                                        : item.status === 'claimed'
+                                        ? 'var(--warning)'
+                                        : 'var(--accent-primary)',
+                                    border: `1px solid ${item.status === 'returned' ? 'rgba(34, 197, 94, 0.3)' : item.status === 'claimed' ? 'rgba(234, 179, 8, 0.3)' : 'rgba(99, 102, 241, 0.3)'}`
+                                }}
+                            >
+                                STATUS: {item.status.toUpperCase()}
+                            </span>
+
+                            {isOwner && item.status !== 'returned' && (
+                                <button
+                                    onClick={handleMarkReturned}
+                                    className="btn-primary"
+                                    style={{ background: 'var(--success)', padding: '0.5rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                >
+                                    <CheckCircle size={16} /> Mark Returned
+                                </button>
+                            )}
+                        </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem', padding: '1.5rem', background: 'var(--bg-secondary)', borderRadius: 'var(--border-radius-sm)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ padding: '0.75rem', background: 'var(--bg-primary)', borderRadius: '50%' }}>
-                                <Calendar size={20} color="var(--accent-primary)" />
+                    {/* Metadata Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.25rem', marginBottom: '2rem', padding: '1.5rem', background: 'var(--bg-secondary)', borderRadius: 'var(--border-radius-sm)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{ padding: '0.6rem', background: 'var(--bg-primary)', borderRadius: '50%' }}>
+                                <Calendar size={18} color="var(--accent-primary)" />
                             </div>
                             <div>
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Date</p>
-                                <p style={{ fontWeight: '500' }}>{new Date(item.date).toLocaleDateString()}</p>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Date</p>
+                                <p style={{ fontWeight: '600', fontSize: '0.9rem' }}>{new Date(item.date).toLocaleDateString()}</p>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ padding: '0.75rem', background: 'var(--bg-primary)', borderRadius: '50%' }}>
-                                <MapPin size={20} color="var(--accent-primary)" />
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{ padding: '0.6rem', background: 'var(--bg-primary)', borderRadius: '50%' }}>
+                                <MapPin size={18} color="var(--accent-primary)" />
                             </div>
                             <div>
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Location</p>
-                                <p style={{ fontWeight: '500' }}>{item.location}</p>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Location</p>
+                                <p style={{ fontWeight: '600', fontSize: '0.9rem' }}>{item.location}</p>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ padding: '0.75rem', background: 'var(--bg-primary)', borderRadius: '50%' }}>
-                                <User size={20} color="var(--accent-primary)" />
+
+                        {item.color && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ padding: '0.6rem', background: 'var(--bg-primary)', borderRadius: '50%' }}>
+                                    <Palette size={18} color="var(--accent-primary)" />
+                                </div>
+                                <div>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Color</p>
+                                    <p style={{ fontWeight: '600', fontSize: '0.9rem' }}>{item.color}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{ padding: '0.6rem', background: 'var(--bg-primary)', borderRadius: '50%' }}>
+                                <User size={18} color="var(--accent-primary)" />
                             </div>
                             <div>
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Posted By</p>
-                                <p style={{ fontWeight: '500' }}>{item.postedBy?.name || 'Unknown'}</p>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Posted By</p>
+                                <p style={{ fontWeight: '600', fontSize: '0.9rem' }}>{item.postedBy?.name || 'Unknown'}</p>
                             </div>
                         </div>
                     </div>
 
+                    {/* Tags */}
+                    {item.tags && item.tags.length > 0 && (
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
+                            {item.tags.map((tag, idx) => (
+                                <span key={idx} className="tag-chip">
+                                    <Tag size={12} /> #{tag}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Description */}
                     <div style={{ marginBottom: '2.5rem' }}>
-                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
                             <Info size={18} /> Description
                         </h3>
-                        <p style={{ color: 'var(--text-secondary)', lineHeight: '1.7' }}>{item.description}</p>
+                        <p style={{ color: 'var(--text-secondary)', lineHeight: '1.7', fontSize: '1rem', whiteSpace: 'pre-line' }}>
+                            {item.description}
+                        </p>
                     </div>
 
-                    {user && user._id !== (item.postedBy?._id || item.postedBy) && item.status === 'active' && (
+                    {/* Security Question for Found Item */}
+                    {item.type === 'found' && item.claimQuestion && (
+                        <div style={{ marginBottom: '2.5rem', padding: '1.25rem', background: 'rgba(99, 102, 241, 0.08)', borderRadius: '8px', borderLeft: '4px solid var(--accent-primary)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', fontWeight: 'bold', marginBottom: '0.4rem' }}>
+                                <ShieldCheck size={18} /> Poster's Verification Question:
+                            </div>
+                            <p style={{ margin: 0, color: 'var(--text-color)', fontWeight: '500' }}>{item.claimQuestion}</p>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.4rem' }}>
+                                (Claimants must provide a convincing answer to this question to verify ownership)
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Claim / Return Request Section for non-owners */}
+                    {user && !isOwner && item.status === 'active' && (
                         <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>
                             {!showClaimForm ? (
-                                <button className="btn-primary" onClick={() => setShowClaimForm(true)} style={{ width: '100%', padding: '1rem', background: item.type === 'lost' ? 'var(--success)' : 'var(--accent-primary)' }}>
-                                    <MessageSquare size={18} /> {item.type === 'lost' ? 'Hey, I found this item! Let\'s verify it\'s yours.' : 'Claim this Item'}
+                                <button
+                                    className="btn-primary"
+                                    onClick={() => setShowClaimForm(true)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '1rem',
+                                        background: item.type === 'lost' ? 'var(--success)' : 'var(--accent-primary)'
+                                    }}
+                                >
+                                    <MessageSquare size={18} />
+                                    {item.type === 'lost'
+                                        ? "I Found This Item! Notify Owner"
+                                        : "Claim This Item (Submit Verification)"}
                                 </button>
                             ) : (
-                                <form onSubmit={handleClaim} style={{ background: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: 'var(--border-radius-sm)' }}>
-                                    <h4 style={{ marginBottom: '1rem' }}>{item.type === 'lost' ? 'Verify Ownership' : 'Claim Verification'}</h4>
-                                    {item.type === 'lost' && (
-                                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '-0.5rem 0 1rem 0' }}>Request verification details from the owner to confirm it's actually theirs before returning it.</p>
-                                    )}
+                                <form onSubmit={handleClaim} style={{ background: 'var(--bg-secondary)', padding: '1.75rem', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)' }}>
+                                    <h4 style={{ marginBottom: '0.5rem', fontSize: '1.2rem' }}>
+                                        {item.type === 'lost' ? 'Notify Owner You Found It' : 'Claim Ownership Verification'}
+                                    </h4>
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+                                        {item.type === 'lost'
+                                            ? 'Provide details of where you found it and where the owner can meet you to retrieve it.'
+                                            : 'Answer the security question above and describe identifying details to verify this is yours.'}
+                                    </p>
+
                                     {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</div>}
-                                    {item.type === 'found' && item.claimQuestion && (
-                                        <div style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg-primary)', borderRadius: '4px', borderLeft: '4px solid var(--accent-primary)' }}>
-                                            <strong style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Security Question:</strong>
-                                            <p style={{ marginTop: '0.5rem' }}>{item.claimQuestion}</p>
-                                        </div>
-                                    )}
+
                                     <div className="form-group">
-                                        <label>{item.type === 'lost' ? 'Message to the owner' : 'Your Message / Answer'}</label>
-                                        <textarea rows="3" placeholder={item.type === 'lost' ? "Ask them to describe a specific detail about it to prove it's theirs..." : 'Explain why this is yours or answer the security question...'} value={claimMessage} onChange={e => setClaimMessage(e.target.value)} required />
+                                        <label>{item.type === 'lost' ? 'Your Message & Meeting Instructions' : 'Your Answer / Proof of Ownership'}</label>
+                                        <textarea
+                                            rows="3"
+                                            placeholder={item.type === 'lost' ? "e.g. I picked it up at the library counter, text me to collect..." : "Answer the security question and describe any specific marks..."}
+                                            value={claimMessage}
+                                            onChange={e => setClaimMessage(e.target.value)}
+                                            required
+                                        />
                                     </div>
+
                                     <div style={{ display: 'flex', gap: '1rem' }}>
-                                        <button type="submit" className="btn-primary" style={{ flex: 1, background: item.type === 'lost' ? 'var(--success)' : 'var(--accent-primary)' }}>
-                                            {item.type === 'lost' ? 'Send Verification Request' : 'Submit Claim'}
+                                        <button
+                                            type="submit"
+                                            className="btn-primary"
+                                            style={{ flex: 1, background: item.type === 'lost' ? 'var(--success)' : 'var(--accent-primary)' }}
+                                        >
+                                            {item.type === 'lost' ? 'Send Notification' : 'Submit Claim Request'}
                                         </button>
-                                        <button type="button" className="btn-secondary" onClick={() => setShowClaimForm(false)}>Cancel</button>
+                                        <button
+                                            type="button"
+                                            className="btn-secondary"
+                                            onClick={() => setShowClaimForm(false)}
+                                        >
+                                            Cancel
+                                        </button>
                                     </div>
                                 </form>
                             )}
@@ -176,31 +525,63 @@ const ItemDetails = () => {
                         </div>
                     )}
 
-                    {user && user._id === (item.postedBy?._id || item.postedBy) && (
-                        <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>
-                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <User size={18} /> Manage Claims ({claims.length})
+                    {/* Manage Claims for Owner or Admin */}
+                    {(isOwner || isAdmin) && (
+                        <div style={{ marginTop: '2.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>
+                            <h3 style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <User size={18} /> Manage Claims & Matches ({claims.length})
                             </h3>
                             {claims.length === 0 ? (
-                                <p style={{ color: 'var(--text-muted)' }}>No one has claimed this item yet.</p>
+                                <p style={{ color: 'var(--text-muted)' }}>No claims or return requests have been submitted yet.</p>
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     {claims.map(claim => (
-                                        <div key={claim._id} style={{ padding: '1.5rem', borderRadius: 'var(--radius)', background: 'var(--bg-secondary)', borderLeft: `4px solid ${claim.status === 'approved' ? 'var(--success)' : claim.status === 'rejected' ? 'var(--danger)' : 'var(--accent-primary)'}` }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                                        <div
+                                            key={claim._id}
+                                            style={{
+                                                padding: '1.5rem',
+                                                borderRadius: 'var(--radius)',
+                                                background: 'var(--bg-secondary)',
+                                                borderLeft: `4px solid ${claim.status === 'approved' ? 'var(--success)' : claim.status === 'rejected' ? 'var(--danger)' : 'var(--accent-primary)'}`
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                                                 <div>
                                                     <h4 style={{ margin: '0 0 0.25rem 0' }}>{claim.claimantId?.name}</h4>
                                                     <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Email: {claim.claimantId?.email}</p>
                                                 </div>
-                                                <span className={`badge`} style={{ background: 'rgba(0,0,0,0.1)', color: 'inherit' }}>{claim.status.toUpperCase()}</span>
+                                                <span
+                                                    className="badge"
+                                                    style={{
+                                                        background: claim.status === 'approved' ? 'rgba(34, 197, 94, 0.1)' : claim.status === 'rejected' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(99, 102, 241, 0.1)',
+                                                        color: claim.status === 'approved' ? 'var(--success)' : claim.status === 'rejected' ? 'var(--danger)' : 'var(--accent-primary)'
+                                                    }}
+                                                >
+                                                    {claim.status.toUpperCase()}
+                                                </span>
                                             </div>
-                                            <p style={{ margin: '0 0 1rem 0', padding: '1rem', background: 'var(--bg-primary)', borderRadius: '4px', fontStyle: 'italic' }}>
-                                                "{claim.message}"
-                                            </p>
+
+                                            <div style={{ padding: '1rem', background: 'var(--bg-primary)', borderRadius: '6px', margin: '0.75rem 0' }}>
+                                                <strong style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Claimant's Verification Answer:</strong>
+                                                <p style={{ margin: 0, fontStyle: 'italic', color: 'var(--text-color)' }}>"{claim.message}"</p>
+                                            </div>
+
                                             {claim.status === 'pending' && (
-                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                    <button onClick={() => handleUpdateClaim(claim._id, 'approved')} className="btn-primary" style={{ padding: '0.5rem 1rem', flex: 1, background: 'var(--success)', color: 'white' }}>Approve Claim</button>
-                                                    <button onClick={() => handleUpdateClaim(claim._id, 'rejected')} className="btn-secondary" style={{ padding: '0.5rem 1rem', flex: 1, color: 'var(--danger)' }}>Reject</button>
+                                                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+                                                    <button
+                                                        onClick={() => handleUpdateClaim(claim._id, 'approved')}
+                                                        className="btn-primary"
+                                                        style={{ padding: '0.5rem 1rem', flex: 1, background: 'var(--success)' }}
+                                                    >
+                                                        Approve & Verify Claim
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleUpdateClaim(claim._id, 'rejected')}
+                                                        className="btn-secondary"
+                                                        style={{ padding: '0.5rem 1rem', flex: 1, color: 'var(--danger)' }}
+                                                    >
+                                                        Reject
+                                                    </button>
                                                 </div>
                                             )}
                                         </div>
@@ -210,21 +591,33 @@ const ItemDetails = () => {
                         </div>
                     )}
 
+                    {/* Clarifications & Chat Thread */}
                     <div style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid var(--border-color)' }}>
-                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                            <MessageSquare size={18} /> Clarifications & Chat
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                            <MessageSquare size={18} /> Public Clarifications & Discussion
                         </h3>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', maxHeight: '400px', overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
                             {messages.length === 0 ? (
-                                <p style={{ color: 'var(--text-muted)' }}>No messages yet. Ask a question about this item!</p>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No messages yet. Ask a clarifying question about this item!</p>
                             ) : (
                                 messages.map(msg => (
-                                    <div key={msg._id} style={{ padding: '1rem', borderRadius: 'var(--radius)', background: user?._id === msg.sender?._id ? 'rgba(99, 102, 241, 0.1)' : 'var(--bg-secondary)', alignSelf: user?._id === msg.sender?._id ? 'flex-end' : 'flex-start', minWidth: '250px', maxWidth: '80%' }}>
+                                    <div
+                                        key={msg._id}
+                                        style={{
+                                            padding: '1rem',
+                                            borderRadius: 'var(--border-radius-sm)',
+                                            background: user?._id === msg.sender?._id ? 'rgba(99, 102, 241, 0.12)' : 'var(--bg-secondary)',
+                                            border: `1px solid ${user?._id === msg.sender?._id ? 'rgba(99, 102, 241, 0.25)' : 'var(--border-color)'}`,
+                                            alignSelf: user?._id === msg.sender?._id ? 'flex-end' : 'flex-start',
+                                            minWidth: '240px',
+                                            maxWidth: '80%'
+                                        }}
+                                    >
                                         <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.8rem', fontWeight: 'bold', color: user?._id === msg.sender?._id ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
                                             {msg.sender?.name} {user?._id === msg.sender?._id && '(You)'}
                                         </p>
-                                        <p style={{ margin: 0, lineHeight: '1.4' }}>{msg.text}</p>
+                                        <p style={{ margin: 0, lineHeight: '1.4', color: 'var(--text-color)' }}>{msg.text}</p>
                                         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.5rem', textAlign: 'right' }}>
                                             {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
@@ -237,15 +630,19 @@ const ItemDetails = () => {
                             <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '0.5rem' }}>
                                 <input
                                     type="text"
-                                    placeholder="Type a message..."
+                                    placeholder="Type a message or question..."
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
-                                    style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', outline: 'none' }}
+                                    style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)' }}
                                 />
-                                <button type="submit" className="btn-primary" disabled={!newMessage.trim()}>Send</button>
+                                <button type="submit" className="btn-primary" disabled={!newMessage.trim()}>
+                                    Send
+                                </button>
                             </form>
                         ) : (
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Please log in to participate in the discussion.</p>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                <Link to="/login" style={{ color: 'var(--accent-primary)', textDecoration: 'underline' }}>Log in</Link> to ask a question or leave a message.
+                            </p>
                         )}
                     </div>
                 </div>

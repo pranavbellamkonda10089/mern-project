@@ -275,9 +275,128 @@ input:focus, textarea:focus, select:focus {
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.5s ease-out forwards;
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .delay-100 { animation-delay: 100ms; }
 .delay-200 { animation-delay: 200ms; }
 .delay-300 { animation-delay: 300ms; }
+
+/* Tag Chips */
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(99, 102, 241, 0.12);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Modal Components */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--glass-shadow);
+  width: 100%;
+  max-width: 550px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 2rem;
+  position: relative;
+}
+
+/* Match Suggestion Box */
+.match-preview-box {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: var(--border-radius-sm);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.match-item-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  transition: all 0.2s ease;
+}
+
+.match-item-card:hover {
+  border-color: var(--accent-primary);
+  transform: translateX(4px);
+}
+
+/* Printable Tag Style */
+.printable-tag {
+  background: #ffffff;
+  color: #0f172a;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 2px dashed #6366f1;
+  text-align: center;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+/* Filter Pills */
+.filter-pill {
+  padding: 0.45rem 1.1rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.filter-pill.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+}
+
+.filter-pill:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  .nav {
+    padding: 1rem;
+  }
+  .container {
+    padding: 1rem;
+  }
+  .hero {
+    padding: 3.5rem 1rem;
+  }
+  .hero h1 {
+    font-size: 2.5rem !important;
+  }
+}

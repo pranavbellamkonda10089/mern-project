@@ -11,6 +11,7 @@ const ItemSchema = new mongoose.Schema({
     status: { type: String, enum: ['active', 'claimed', 'returned'], default: 'active' },
     postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     claimQuestion: { type: String },
+    color: { type: String },
     tags: [{ type: String }]
 }, { timestamps: true });
 

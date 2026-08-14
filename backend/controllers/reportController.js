@@ -25,6 +25,7 @@ const createReport = async (req, res) => {
 
         res.status(201).json(report);
     } catch (error) {
+        console.error('Error creating report:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -34,11 +35,52 @@ const getReports = async (req, res) => {
         if (req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Not authorized as admin' });
         }
-        const reports = await Report.find({}).populate('itemId', 'title').populate('reportedBy', 'name email').sort('-createdAt');
+        const reports = await Report.find({})
+            .populate({
+                path: 'itemId',
+                select: 'title type category location photoUrl status postedBy',
+                populate: { path: 'postedBy', select: 'name email blocked' }
+            })
+            .populate('reportedBy', 'name email')
+            .sort('-createdAt');
         res.status(200).json(reports);
     } catch (error) {
+        console.error('Error fetching reports:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
 
-module.exports = { createReport, getReports };
+const updateReportStatus = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Not authorized as admin' });
+        }
+        const { status } = req.body;
+        const report = await Report.findById(req.params.id);
+        if (!report) return res.status(404).json({ message: 'Report not found' });
+
+        report.status = status;
+        await report.save();
+        res.status(200).json(report);
+    } catch (error) {
+        console.error('Error updating report status:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+const deleteReport = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Not authorized as admin' });
+        }
+        const report = await Report.findByIdAndDelete(req.params.id);
+        if (!report) return res.status(404).json({ message: 'Report not found' });
+
+        res.status(200).json({ message: 'Report deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting report:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+module.exports = { createReport, getReports, updateReportStatus, deleteReport };
