@@ -83,12 +83,9 @@ const googleLogin = async (req, res) => {
         let user = await User.findOne({ email });
 
         if (!user) {
-            if (!req.body.role) {
-                return res.json({ isNewUser: true });
-            }
             const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(email + process.env.JWT_SECRET, salt);
-            user = await User.create({ name, email, password: hashedPassword, role: req.body.role });
+            const hashedPassword = await bcrypt.hash(email + (process.env.JWT_SECRET || 'secret'), salt);
+            user = await User.create({ name, email, password: hashedPassword, role: 'student' });
         }
 
         if (user.blocked) {

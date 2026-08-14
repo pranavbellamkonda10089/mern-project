@@ -9,8 +9,6 @@ const Login = () => {
 
     const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'student' });
     const [error, setError] = useState('');
-    const [showRoleModal, setShowRoleModal] = useState(false);
-    const [pendingCredential, setPendingCredential] = useState(null);
 
     if (user) return <Navigate to="/dashboard" />;
 
@@ -29,18 +27,8 @@ const Login = () => {
     };
 
     const handleGoogleSuccess = async (credentialResponse) => {
+        setError('');
         const res = await googleLogin(credentialResponse.credential);
-        if (res.isNewUser) {
-            setPendingCredential(credentialResponse.credential);
-            setShowRoleModal(true);
-        } else if (!res.success) {
-            setError(res.message);
-        }
-    };
-
-    const handleGoogleRoleSelection = async (selectedRole) => {
-        setShowRoleModal(false);
-        const res = await googleLogin(pendingCredential, selectedRole);
         if (!res.success) {
             setError(res.message);
         }
@@ -48,18 +36,6 @@ const Login = () => {
 
     return (
         <div className="container animate-fade-in" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
-            {showRoleModal && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-                    <div className="glass-card" style={{ padding: '2.5rem', maxWidth: '400px', width: '90%', textAlign: 'center', background: 'var(--bg-color)' }}>
-                        <h3 style={{ marginBottom: '1rem', fontSize: '1.5rem', color: 'var(--text-color)' }}>Complete your Sign Up</h3>
-                        <p style={{ margin: '0 0 2rem 0', color: 'var(--text-secondary)' }}>Are you trying to signup as an admin or a student?</p>
-                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                            <button className="btn-secondary" onClick={() => handleGoogleRoleSelection('student')}>Student</button>
-                            <button className="btn-primary" onClick={() => handleGoogleRoleSelection('admin')}>Admin</button>
-                        </div>
-                    </div>
-                </div>
-            )}
             <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '2.5rem' }}>
                 <h2 style={{ textAlign: 'center', marginBottom: '2rem', fontSize: '2rem' }}>
                     {isLogin ? 'Welcome Back' : 'Join CampusCrate'}
