@@ -15,6 +15,7 @@ import {
     CheckCircle2,
     Copy,
     Printer,
+    Download,
     X,
     Palette,
     Tag,
@@ -22,9 +23,11 @@ import {
     Image as ImageIcon,
     Send,
     AlertCircle,
-    Sparkles
+    Sparkles,
+    Wifi,
+    Globe
 } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 
 const ItemDetails = () => {
     const { id } = useParams();
@@ -46,6 +49,8 @@ const ItemDetails = () => {
 
     // QR & Report Modals
     const [showQrModal, setShowQrModal] = useState(false);
+    const [qrHostMode, setQrHostMode] = useState('current'); // 'current', 'lan', 'custom'
+    const [customHostUrl, setCustomHostUrl] = useState('');
     const [showReportModal, setShowReportModal] = useState(false);
     const [reportReason, setReportReason] = useState('Spam / Misleading');
     const [reportDetails, setReportDetails] = useState('');
@@ -57,6 +62,7 @@ const ItemDetails = () => {
 
     const printRef = useRef(null);
     const chatSectionRef = useRef(null);
+    const canvasRef = useRef(null);
 
     useEffect(() => {
         fetchItemAndMessages();
@@ -218,16 +224,39 @@ const ItemDetails = () => {
         }
     };
 
-    const itemUrl = window.location.href;
+    // Calculate effective QR URL
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    let targetQrUrl = window.location.href;
+
+    if (qrHostMode === 'lan') {
+        // Use local network address for phone scanning
+        targetQrUrl = `${window.location.protocol}//10.70.70.137:${window.location.port || '5173'}/item/${id}`;
+    } else if (qrHostMode === 'custom' && customHostUrl.trim()) {
+        const cleanHost = customHostUrl.trim().replace(/\/+$/, '');
+        targetQrUrl = cleanHost.startsWith('http') ? `${cleanHost}/item/${id}` : `https://${cleanHost}/item/${id}`;
+    }
 
     const copyItemUrl = () => {
-        navigator.clipboard.writeText(itemUrl);
+        navigator.clipboard.writeText(targetQrUrl);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
 
     const handlePrintTag = () => {
         window.print();
+    };
+
+    const handleDownloadQr = () => {
+        const canvas = document.getElementById('qr-canvas-element');
+        if (canvas) {
+            const pngUrl = canvas.toDataURL('image/png');
+            const downloadLink = document.createElement('a');
+            downloadLink.href = pngUrl;
+            downloadLink.download = `CampusCrate-Tag-${item.title.replace(/\s+/g, '_')}-${id.slice(-6)}.png`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
     };
 
     const scrollToChat = () => {
@@ -379,8 +408,8 @@ const ItemDetails = () => {
             {/* QR Tag Modal */}
             {showQrModal && (
                 <div className="modal-backdrop" onClick={() => setShowQrModal(false)}>
-                    <div className="modal-card animate-fade-in" onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <div className="modal-card animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                             <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <QrCode size={20} color="var(--accent-primary)" /> Campus Return QR Tag
                             </h3>
@@ -389,10 +418,58 @@ const ItemDetails = () => {
                             </button>
                         </div>
 
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                            Print or attach this QR tag to your belongings (ID card, laptop, bottle, keys). Anyone who scans it will directly open this item page to contact you or return it!
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: '1.5' }}>
+                            Attach this QR sticker to your ID card, notebook, laptop, or bottle. When someone scans it, they will directly open this page to report finding it!
                         </p>
 
+                        {/* Localhost / Network Host Mode Selector for Local Testing */}
+                        {isLocalhost && (
+                            <div style={{ background: 'rgba(99, 102, 241, 0.08)', padding: '0.85rem 1rem', borderRadius: '8px', marginBottom: '1.25rem', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.4rem' }}>
+                                    <Wifi size={14} /> Phone Scanning Configuration:
+                                </span>
+                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setQrHostMode('current')}
+                                        className={`filter-pill ${qrHostMode === 'current' ? 'active' : ''}`}
+                                        style={{ fontSize: '0.75rem', padding: '0.3rem 0.75rem' }}
+                                    >
+                                        Current ({window.location.hostname})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setQrHostMode('lan')}
+                                        className={`filter-pill ${qrHostMode === 'lan' ? 'active' : ''}`}
+                                        style={{ fontSize: '0.75rem', padding: '0.3rem 0.75rem' }}
+                                    >
+                                        Wi-Fi IP (10.70.70.137)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setQrHostMode('custom')}
+                                        className={`filter-pill ${qrHostMode === 'custom' ? 'active' : ''}`}
+                                        style={{ fontSize: '0.75rem', padding: '0.3rem 0.75rem' }}
+                                    >
+                                        Custom Domain
+                                    </button>
+                                </div>
+                                {qrHostMode === 'custom' && (
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. campuscrate.college.edu"
+                                        value={customHostUrl}
+                                        onChange={e => setCustomHostUrl(e.target.value)}
+                                        style={{ marginTop: '0.6rem', padding: '0.4rem 0.8rem', fontSize: '0.8rem', width: '100%' }}
+                                    />
+                                )}
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.4rem' }}>
+                                    Tip: When scanning with a mobile phone camera on Wi-Fi, select "Wi-Fi IP" so your phone can reach your computer.
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Printable Tag Container */}
                         <div ref={printRef} className="printable-tag">
                             <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.25rem', color: '#1e293b' }}>
                                 Campus<span style={{ color: '#6366f1' }}>Crate</span> Return Tag
@@ -401,23 +478,49 @@ const ItemDetails = () => {
                                 If found, scan QR code to notify owner
                             </p>
 
-                            <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '8px', display: 'inline-block', border: '1px solid #e2e8f0' }}>
-                                <QRCodeSVG value={itemUrl} size={180} level="H" includeMargin={true} />
+                            <div style={{ background: '#ffffff', padding: '0.75rem', borderRadius: '8px', display: 'inline-block', border: '1px solid #e2e8f0' }}>
+                                <QRCodeSVG value={targetQrUrl} size={180} level="H" includeMargin={true} />
+                                {/* Hidden canvas used for generating high-res PNG download */}
+                                <div style={{ display: 'none' }}>
+                                    <QRCodeCanvas id="qr-canvas-element" value={targetQrUrl} size={400} level="H" includeMargin={true} />
+                                </div>
                             </div>
 
-                            <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                            <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
                                 <strong style={{ display: 'block', fontSize: '1rem', color: '#0f172a' }}>{item.title}</strong>
-                                <span style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'capitalize' }}>Category: {item.category.replace('_', ' ')}</span>
+                                <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'capitalize' }}>
+                                    Tag ID: #{id.slice(-6).toUpperCase()} • Category: {item.category.replace('_', ' ')}
+                                </span>
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                            <button onClick={copyItemUrl} className="btn-secondary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                                {copied ? <CheckCircle size={16} color="var(--success)" /> : <Copy size={16} />}
-                                {copied ? 'Link Copied!' : 'Copy Item Link'}
+                        {/* Target Link Preview */}
+                        <div style={{ marginTop: '1rem', padding: '0.5rem 0.75rem', background: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-muted)', wordBreak: 'break-all', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                🔗 {targetQrUrl}
+                            </span>
+                            <button onClick={copyItemUrl} style={{ color: 'var(--accent-primary)', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
+                                {copied ? 'Copied!' : 'Copy'}
                             </button>
-                            <button onClick={handlePrintTag} className="btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                                <Printer size={16} /> Print Tag
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+                            <button
+                                onClick={handleDownloadQr}
+                                className="btn-secondary"
+                                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontSize: '0.85rem' }}
+                                title="Download QR image file"
+                            >
+                                <Download size={15} /> Download PNG
+                            </button>
+                            <button
+                                onClick={handlePrintTag}
+                                className="btn-primary"
+                                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontSize: '0.85rem' }}
+                                title="Print return tag"
+                            >
+                                <Printer size={15} /> Print Tag
                             </button>
                         </div>
                     </div>

@@ -455,3 +455,32 @@ input:focus, textarea:focus, select:focus {
     font-size: 2.5rem !important;
   }
 }
+
+/* Dedicated Print Styles for QR Tag */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .printable-tag, .printable-tag * {
+    visibility: visible;
+  }
+  .printable-tag {
+    position: absolute;
+    left: 50%;
+    top: 50px;
+    transform: translateX(-50%);
+    width: 320px;
+    margin: 0 auto;
+    border: 2px dashed #000000 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 1.5rem !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+}
+
