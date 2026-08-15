@@ -29,7 +29,8 @@ const getItems = async (req, res) => {
         }
 
         if (search && search.trim()) {
-            const searchRegex = { $regex: search.trim(), $options: 'i' };
+            const sanitized = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const searchRegex = { $regex: sanitized, $options: 'i' };
             query.$or = [
                 { title: searchRegex },
                 { description: searchRegex },
@@ -43,7 +44,7 @@ const getItems = async (req, res) => {
         res.status(200).json(items);
     } catch (error) {
         console.error('Error fetching items:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Server error fetching items' });
     }
 };
 
@@ -201,9 +202,24 @@ const createClaim = async (req, res) => {
 
 const getClaims = async (req, res) => {
     try {
-        const claims = await Claim.find({ itemId: req.params.id }).populate('claimantId', 'name email').sort('-createdAt');
+        const item = await Item.findById(req.params.id);
+        if (!item) return res.status(404).json({ message: 'Item not found' });
+
+        const isAuthor = item.postedBy.toString() === req.user._id.toString();
+        const isAdmin = req.user.role === 'admin';
+
+        let query = { itemId: req.params.id };
+        if (!isAuthor && !isAdmin) {
+            // Regular students can only see their own claim
+            query.claimantId = req.user._id;
+        }
+
+        const claims = await Claim.find(query)
+            .populate('claimantId', 'name email')
+            .sort('-createdAt');
         res.status(200).json(claims);
     } catch (error) {
+        console.error('Error fetching claims:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -230,6 +246,8 @@ const updateClaimStatus = async (req, res) => {
         if (!claim) return res.status(404).json({ message: 'Claim not found' });
 
         const item = await Item.findById(claim.itemId);
+        if (!item) return res.status(404).json({ message: 'Item not found' });
+
         if (item.postedBy.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
             return res.status(401).json({ message: 'Not authorized' });
         }
@@ -240,18 +258,10 @@ const updateClaimStatus = async (req, res) => {
         if (status === 'approved') {
             item.status = 'claimed';
             await item.save();
-
-            const existingExchange = await Exchange.findOne({ itemId: item._id });
-            if (!existingExchange) {
-                await Exchange.create({
-                    itemId: item._id,
-                    posterId: item.postedBy,
-                    claimantId: claim.claimantId
-                });
-            }
         }
 
-        res.status(200).json(claim);
+        const populatedClaim = await Claim.findById(claim._id).populate('claimantId', 'name email');
+        res.status(200).json(populatedClaim);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
     }

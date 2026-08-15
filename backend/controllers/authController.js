@@ -127,6 +127,7 @@ const Item = require('../models/Item');
 const Claim = require('../models/Claim');
 const Message = require('../models/Message');
 const Report = require('../models/Report');
+const Exchange = require('../models/Exchange');
 
 const deleteUser = async (req, res) => {
     try {
@@ -144,6 +145,7 @@ const deleteUser = async (req, res) => {
         await Claim.deleteMany({ claimantId: req.params.id });
         await Message.deleteMany({ sender: req.params.id });
         await Report.deleteMany({ reportedBy: req.params.id });
+        await Exchange.deleteMany({ $or: [{ posterId: req.params.id }, { claimantId: req.params.id }] });
 
         res.status(200).json({ message: `Account for ${user.name} (${user.email}) deleted successfully` });
     } catch (error) {

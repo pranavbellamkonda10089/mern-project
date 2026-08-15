@@ -71,7 +71,6 @@ const Dashboard = ({ filterType }) => {
     if (!user) return <Navigate to="/login" />;
 
     const returnedCount = items.filter(i => i.status === 'returned').length;
-    const activeCount = items.filter(i => i.status === 'active').length;
 
     return (
         <div className="container animate-fade-in" style={{ maxWidth: '1050px' }}>

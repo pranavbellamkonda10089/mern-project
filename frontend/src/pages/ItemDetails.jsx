@@ -71,23 +71,15 @@ const ItemDetails = () => {
             setItem(itemRes.data);
             setMessages(msgRes.data);
 
-            const posterId = itemRes.data.postedBy?._id || itemRes.data.postedBy;
-            if (user && (user._id === posterId || user.role === 'admin')) {
-                const claimsRes = await axios.get(
-                    `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/claim`,
-                    { headers: { Authorization: `Bearer ${user.token}` } }
-                );
-                setClaims(claimsRes.data || []);
-            } else if (user) {
-                // Fetch claims so regular user can see if they already submitted
+            if (user) {
                 try {
                     const claimsRes = await axios.get(
                         `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${id}/claim`,
                         { headers: { Authorization: `Bearer ${user.token}` } }
                     );
                     setClaims(claimsRes.data || []);
-                } catch {
-                    // Ignore if restricted
+                } catch (err) {
+                    console.error('Error fetching claims:', err);
                 }
             }
         } catch (err) {

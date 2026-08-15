@@ -1,327 +1,315 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import {
-    Shield,
-    AlertTriangle,
-    FileText,
-    CheckCircle2,
+    ShieldAlert,
     Trash2,
-    Lock,
-    Unlock,
-    ExternalLink,
-    Search,
+    CheckCircle2,
+    XCircle,
+    UserCheck,
+    UserX,
+    Users,
+    Package,
+    AlertTriangle,
+    Eye,
+    RefreshCw,
     Repeat,
-    UserX
+    FileText
 } from 'lucide-react';
 
 const Admin = () => {
-    const { user, loading } = useContext(AuthContext);
+    const { user } = useContext(AuthContext);
+    const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'reports', 'items', 'users', 'claims'
 
-    const [activeTab, setActiveTab] = useState('overview');
-    const [fetching, setFetching] = useState(true);
-    const [error, setError] = useState('');
-
-    // State data
-    const [members, setMembers] = useState([]);
     const [reports, setReports] = useState([]);
     const [items, setItems] = useState([]);
+    const [users, setUsers] = useState([]);
     const [claims, setClaims] = useState([]);
     const [exchanges, setExchanges] = useState([]);
-
-    // Filters
-    const [memberSearch, setMemberSearch] = useState('');
-    const [itemSearch, setItemSearch] = useState('');
-    const [reportFilter, setReportFilter] = useState('all');
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [actionMsg, setActionMsg] = useState('');
 
     useEffect(() => {
         if (user && user.role === 'admin') {
             fetchAllAdminData();
-        } else {
-            setFetching(false);
         }
     }, [user]);
 
     const fetchAllAdminData = async () => {
-        setFetching(true);
-        setError('');
         try {
+            setLoading(true);
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const [membersRes, reportsRes, itemsRes, claimsRes, exchangesRes] = await Promise.all([
-                axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth`, config),
+            const [repRes, itemRes, userRes, claimRes, exRes] = await Promise.all([
                 axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/reports`, config),
-                axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items?status=all`, config),
+                axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items?status=all`),
+                axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/users`, config),
                 axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/claims/all`, config),
                 axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/exchanges`, config)
             ]);
 
-            setMembers(membersRes.data || []);
-            setReports(reportsRes.data || []);
-            setItems(itemsRes.data || []);
-            setClaims(claimsRes.data || []);
-            setExchanges(exchangesRes.data || []);
-        } catch (err) {
-            console.error('Failed to load admin data:', err);
-            setError('Failed to fetch admin data. Ensure backend is running.');
+            setReports(repRes.data || []);
+            setItems(itemRes.data || []);
+            setUsers(userRes.data || []);
+            setClaims(claimRes.data || []);
+            setExchanges(exRes.data || []);
+        } catch (error) {
+            console.error('Error fetching admin hub data:', error);
         } finally {
-            setFetching(false);
+            setLoading(false);
         }
     };
 
-    // User Moderation: Block / Unblock
-    const handleToggleBlockUser = async (userId) => {
+    const showActionFeedback = (msg) => {
+        setActionMsg(msg);
+        setTimeout(() => setActionMsg(''), 3500);
+    };
+
+    // User Management Actions
+    const handleToggleBlock = async (userId, currentBlocked) => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.patch(
+            await axios.patch(
                 `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/users/${userId}/block`,
                 {},
                 config
             );
-            setMembers(members.map(m => m._id === userId ? data.user : m));
-        } catch (err) {
-            alert(err.response?.data?.message || 'Error updating user block status');
+            setUsers(users.map(u => u._id === userId ? { ...u, blocked: !currentBlocked } : u));
+            showActionFeedback(`User ${currentBlocked ? 'unblocked' : 'blocked'} successfully`);
+        } catch (error) {
+            alert('Failed to update user block status: ' + (error.response?.data?.message || error.message));
         }
     };
 
-    // User Moderation: Delete Student Account
     const handleDeleteUser = async (userId, userName) => {
-        if (!window.confirm(`Are you sure you want to permanently delete the account for "${userName}"? This will remove all their posted items, claims, and messages.`)) return;
+        if (!window.confirm(`Permanently delete account for "${userName}"? This will delete all their items, claims, and messages.`)) return;
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/users/${userId}`, config);
-            setMembers(members.filter(m => m._id !== userId));
-            setItems(items.filter(i => (i.postedBy?._id || i.postedBy) !== userId));
-            setReports(reports.filter(r => (r.reportedBy?._id || r.reportedBy) !== userId));
-            setClaims(claims.filter(c => (c.claimantId?._id || c.claimantId) !== userId));
-        } catch (err) {
-            alert(err.response?.data?.message || 'Error deleting user account');
-        }
-    };
-
-    // Report Moderation
-    const handleUpdateReportStatus = async (reportId, newStatus) => {
-        try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.patch(
-                `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/reports/${reportId}/status`,
-                { status: newStatus },
+            await axios.delete(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/users/${userId}`,
                 config
             );
-            setReports(reports.map(r => r._id === reportId ? { ...r, status: data.status } : r));
-        } catch (err) {
-            alert(err.response?.data?.message || 'Error updating report status');
+            setUsers(users.filter(u => u._id !== userId));
+            setItems(items.filter(i => (i.postedBy?._id || i.postedBy) !== userId));
+            setClaims(claims.filter(c => (c.claimantId?._id || c.claimantId) !== userId));
+            setExchanges(exchanges.filter(ex => (ex.posterId?._id || ex.posterId) !== userId && (ex.claimantId?._id || ex.claimantId) !== userId));
+            showActionFeedback(`Account for ${userName} deleted permanently`);
+        } catch (error) {
+            alert('Failed to delete user: ' + (error.response?.data?.message || error.message));
+        }
+    };
+
+    // Report Actions
+    const handleUpdateReport = async (reportId, status) => {
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.patch(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/reports/${reportId}/status`,
+                { status },
+                config
+            );
+            setReports(reports.map(r => r._id === reportId ? { ...r, status } : r));
+            showActionFeedback(`Report marked as ${status}`);
+        } catch (error) {
+            alert('Failed to update report status: ' + (error.response?.data?.message || error.message));
         }
     };
 
     const handleDeleteReport = async (reportId) => {
-        if (!window.confirm('Dismiss and delete this abuse report?')) return;
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/reports/${reportId}`, config);
+            await axios.delete(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/reports/${reportId}`,
+                config
+            );
             setReports(reports.filter(r => r._id !== reportId));
-        } catch {
-            alert('Error deleting report');
+            showActionFeedback('Report dismissed');
+        } catch (error) {
+            alert('Failed to delete report: ' + (error.response?.data?.message || error.message));
         }
     };
 
-    // Item Moderation: Delete Item
+    // Item Actions
     const handleDeleteItem = async (itemId) => {
-        if (!window.confirm('Are you sure you want to permanently delete this item and its associated data?')) return;
+        if (!window.confirm('Are you sure you want to delete this listing as admin?')) return;
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${itemId}`, config);
-            setItems(items.filter(item => item._id !== itemId));
+            await axios.delete(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/${itemId}`,
+                config
+            );
+            setItems(items.filter(i => i._id !== itemId));
             setReports(reports.filter(r => (r.itemId?._id || r.itemId) !== itemId));
             setClaims(claims.filter(c => (c.itemId?._id || c.itemId) !== itemId));
-        } catch (err) {
-            alert(err.response?.data?.message || 'Error deleting item');
+            setExchanges(exchanges.filter(e => (e.itemId?._id || e.itemId) !== itemId));
+            showActionFeedback('Item deleted successfully');
+        } catch (error) {
+            alert('Failed to delete item: ' + (error.response?.data?.message || error.message));
         }
     };
 
-    // Exchange Deletion
     const handleDeleteExchange = async (exchangeId) => {
-        if (!window.confirm('Delete this exchange record permanently?')) return;
+        if (!window.confirm('Delete this exchange log?')) return;
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/exchanges/${exchangeId}`, config);
-            setExchanges(exchanges.filter(ex => ex._id !== exchangeId));
-        } catch {
-            alert('Error deleting exchange');
+            await axios.delete(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/exchanges/${exchangeId}`,
+                config
+            );
+            setExchanges(exchanges.filter(e => e._id !== exchangeId));
+            showActionFeedback('Exchange log deleted');
+        } catch (error) {
+            alert('Failed to delete exchange: ' + (error.response?.data?.message || error.message));
         }
     };
 
-    if (loading) return <div className="container" style={{ textAlign: 'center', marginTop: '10vh' }}>Loading...</div>;
-
     if (!user || user.role !== 'admin') {
-        return <Navigate to="/dashboard" />;
+        return <Navigate to="/" />;
     }
 
     const pendingReportsCount = reports.filter(r => r.status === 'pending').length;
-    const pendingClaimsCount = claims.filter(c => c.status === 'pending').length;
-    const blockedUsersCount = members.filter(m => m.blocked).length;
+    const activeItemsCount = items.filter(i => i.status === 'active').length;
+    const returnedItemsCount = items.filter(i => i.status === 'returned').length;
+    const blockedUsersCount = users.filter(u => u.blocked).length;
 
-    const filteredMembers = members.filter(m =>
-        m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
-        m.email.toLowerCase().includes(memberSearch.toLowerCase())
+    const filteredUsers = users.filter(u =>
+        u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const filteredItems = items.filter(item =>
-        item.title.toLowerCase().includes(itemSearch.toLowerCase()) ||
-        item.location.toLowerCase().includes(itemSearch.toLowerCase()) ||
-        (item.postedBy?.name && item.postedBy.name.toLowerCase().includes(itemSearch.toLowerCase()))
+    const filteredItems = items.filter(i =>
+        i.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        i.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        i.category?.toLowerCase().includes(searchTerm.toLowerCase())
     );
-
-    const filteredReports = reports.filter(r => {
-        if (reportFilter === 'all') return true;
-        return r.status === reportFilter;
-    });
 
     return (
         <div className="container animate-fade-in" style={{ maxWidth: '1200px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-                <div>
-                    <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '2.2rem', margin: '0 0 0.25rem 0' }}>
-                        <Shield color="var(--accent-primary)" /> CampusCrate Admin Moderation
-                    </h1>
-                    <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
-                        Review reported abuse, moderate campus posts, manage claims & prevent spam.
-                    </p>
+            {/* Admin Header */}
+            <div className="glass-card" style={{ padding: '2rem', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ padding: '0.9rem', background: 'rgba(239, 68, 68, 0.15)', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                        <ShieldAlert size={28} color="var(--danger)" />
+                    </div>
+                    <div>
+                        <h2 style={{ fontSize: '1.8rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            Campus Administration Center
+                        </h2>
+                        <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                            Platform oversight, spam moderation, user account control, and exchange management
+                        </p>
+                    </div>
                 </div>
 
-                <button onClick={fetchAllAdminData} className="btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
-                    ↻ Refresh Data
-                </button>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                    <button onClick={fetchAllAdminData} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
+                        <RefreshCw size={15} /> Refresh Data
+                    </button>
+                </div>
             </div>
 
-            {error && (
-                <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '1rem', borderRadius: '8px', marginBottom: '2rem' }}>
-                    {error}
+            {/* Action Feedback Banner */}
+            {actionMsg && (
+                <div style={{ background: 'rgba(34, 197, 94, 0.15)', color: 'var(--success)', border: '1px solid rgba(34, 197, 94, 0.3)', padding: '0.85rem 1.25rem', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '500' }}>
+                    <CheckCircle2 size={18} /> {actionMsg}
                 </div>
             )}
 
-            {/* Quick Metrics Bar */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
-                <div className="glass-card" style={{ padding: '1.25rem', borderLeft: '4px solid var(--accent-primary)' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Total Members</span>
-                    <h2 style={{ fontSize: '1.9rem', margin: '0.4rem 0 0 0' }}>{members.length}</h2>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>{blockedUsersCount} Blocked</span>
-                </div>
-
-                <div className="glass-card" style={{ padding: '1.25rem', borderLeft: '4px solid var(--warning)' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Active Items</span>
-                    <h2 style={{ fontSize: '1.9rem', margin: '0.4rem 0 0 0' }}>{items.filter(i => i.status === 'active').length}</h2>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{items.length} Total Posts</span>
-                </div>
-
-                <div className="glass-card" style={{ padding: '1.25rem', borderLeft: '4px solid var(--danger)' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Abuse Reports</span>
-                    <h2 style={{ fontSize: '1.9rem', margin: '0.4rem 0 0 0', color: pendingReportsCount > 0 ? 'var(--danger)' : 'inherit' }}>
-                        {pendingReportsCount}
-                    </h2>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{reports.length} Total Reports</span>
-                </div>
-
-                <div className="glass-card" style={{ padding: '1.25rem', borderLeft: '4px solid #3b82f6' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Pending Claims</span>
-                    <h2 style={{ fontSize: '1.9rem', margin: '0.4rem 0 0 0' }}>{pendingClaimsCount}</h2>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{claims.length} Total Claims</span>
-                </div>
-
-                <div className="glass-card" style={{ padding: '1.25rem', borderLeft: '4px solid var(--success)' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Exchanges</span>
-                    <h2 style={{ fontSize: '1.9rem', margin: '0.4rem 0 0 0', color: 'var(--success)' }}>{exchanges.length}</h2>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Items Returned</span>
-                </div>
-            </div>
-
             {/* Navigation Tabs */}
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', flexWrap: 'wrap', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
                 <button
                     onClick={() => setActiveTab('overview')}
                     className={`filter-pill ${activeTab === 'overview' ? 'active' : ''}`}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                 >
-                    Overview
+                    <Package size={15} /> Overview
                 </button>
                 <button
                     onClick={() => setActiveTab('reports')}
                     className={`filter-pill ${activeTab === 'reports' ? 'active' : ''}`}
-                    style={{ position: 'relative' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                 >
-                    Reported Abuse {pendingReportsCount > 0 && <span style={{ background: 'var(--danger)', color: '#fff', borderRadius: '50%', padding: '0.1rem 0.4rem', fontSize: '0.7rem', marginLeft: '0.3rem' }}>{pendingReportsCount}</span>}
+                    <AlertTriangle size={15} color="var(--danger)" /> Reported Abuse ({pendingReportsCount})
                 </button>
                 <button
                     onClick={() => setActiveTab('items')}
                     className={`filter-pill ${activeTab === 'items' ? 'active' : ''}`}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                 >
-                    All Item Listings & Spam
+                    <Package size={15} /> Item Listings ({items.length})
                 </button>
                 <button
-                    onClick={() => setActiveTab('members')}
-                    className={`filter-pill ${activeTab === 'members' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('users')}
+                    className={`filter-pill ${activeTab === 'users' ? 'active' : ''}`}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                 >
-                    Student Members ({members.length})
+                    <Users size={15} /> Users & Accounts ({users.length})
                 </button>
                 <button
                     onClick={() => setActiveTab('claims')}
                     className={`filter-pill ${activeTab === 'claims' ? 'active' : ''}`}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                 >
-                    Claims & Exchanges
+                    <Repeat size={15} /> Claims & Exchanges ({exchanges.length})
                 </button>
             </div>
 
-            {fetching ? (
-                <div style={{ textAlign: 'center', padding: '3rem' }}>Loading data...</div>
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
+                    Loading administrative metrics...
+                </div>
             ) : (
                 <>
                     {/* TAB: OVERVIEW */}
                     {activeTab === 'overview' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                            {/* Urgent Action Needed Banner */}
-                            {pendingReportsCount > 0 && (
-                                <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '1.5rem', borderRadius: 'var(--border-radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                        <AlertTriangle size={28} color="var(--danger)" />
-                                        <div>
-                                            <strong style={{ color: 'var(--danger)', fontSize: '1.1rem' }}>
-                                                {pendingReportsCount} Abuse / Spam Report(s) require your review
-                                            </strong>
-                                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                                Students have flagged potential fake posts, duplicates, or spam items.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button onClick={() => setActiveTab('reports')} className="btn-primary" style={{ background: 'var(--danger)', padding: '0.6rem 1.25rem' }}>
-                                        Review Reports Now
-                                    </button>
+                        <div>
+                            {/* Stat Cards */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+                                <div className="glass-card" style={{ padding: '1.5rem' }}>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Active Listings</span>
+                                    <h3 style={{ fontSize: '2rem', margin: '0.4rem 0 0 0', color: 'var(--accent-primary)' }}>{activeItemsCount}</h3>
                                 </div>
-                            )}
+                                <div className="glass-card" style={{ padding: '1.5rem' }}>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Items Returned</span>
+                                    <h3 style={{ fontSize: '2rem', margin: '0.4rem 0 0 0', color: 'var(--success)' }}>{returnedItemsCount}</h3>
+                                </div>
+                                <div className="glass-card" style={{ padding: '1.5rem' }}>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Pending Reports</span>
+                                    <h3 style={{ fontSize: '2rem', margin: '0.4rem 0 0 0', color: pendingReportsCount > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>{pendingReportsCount}</h3>
+                                </div>
+                                <div className="glass-card" style={{ padding: '1.5rem' }}>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Registered Students</span>
+                                    <h3 style={{ fontSize: '2rem', margin: '0.4rem 0 0 0', color: 'var(--text-color)' }}>{users.length}</h3>
+                                </div>
+                            </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem' }}>
-                                {/* Recent Reports Widget */}
+                            {/* Two-Column Quick Panel */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+                                {/* Recent Pending Reports Widget */}
                                 <div className="glass-card" style={{ padding: '1.5rem' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                         <h3 style={{ fontSize: '1.2rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <AlertTriangle size={18} color="var(--danger)" /> Recent Abuse Reports
+                                            <AlertTriangle size={18} color="var(--danger)" /> Abuse Alerts Needing Review
                                         </h3>
                                         <button onClick={() => setActiveTab('reports')} style={{ color: 'var(--accent-primary)', fontSize: '0.85rem' }}>
                                             View All
                                         </button>
                                     </div>
 
-                                    {reports.length === 0 ? (
-                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No abuse reports filed. The campus feed is healthy!</p>
+                                    {reports.filter(r => r.status === 'pending').length === 0 ? (
+                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No pending abuse reports. Good job!</p>
                                     ) : (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                            {reports.slice(0, 4).map(report => (
+                                            {reports.filter(r => r.status === 'pending').slice(0, 4).map(report => (
                                                 <div key={report._id} style={{ padding: '0.85rem', background: 'var(--bg-secondary)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                     <div>
-                                                        <strong style={{ fontSize: '0.9rem' }}>{report.itemId?.title || 'Unknown Item'}</strong>
+                                                        <strong style={{ fontSize: '0.9rem' }}>{report.itemId?.title || 'Reported Post'}</strong>
                                                         <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                                                             Reason: {report.reason}
                                                         </p>
                                                     </div>
-                                                    <span className="badge" style={{ background: report.status === 'pending' ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)', color: report.status === 'pending' ? 'var(--danger)' : 'var(--success)' }}>
+                                                    <span className="badge" style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--danger)' }}>
                                                         {report.status}
                                                     </span>
                                                 </div>
@@ -368,289 +356,224 @@ const Admin = () => {
                     {/* TAB: REPORTED ABUSE */}
                     {activeTab === 'reports' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <button onClick={() => setReportFilter('all')} className={`filter-pill ${reportFilter === 'all' ? 'active' : ''}`}>All ({reports.length})</button>
-                                    <button onClick={() => setReportFilter('pending')} className={`filter-pill ${reportFilter === 'pending' ? 'active' : ''}`}>Pending ({pendingReportsCount})</button>
-                                    <button onClick={() => setReportFilter('resolved')} className={`filter-pill ${reportFilter === 'resolved' ? 'active' : ''}`}>Resolved</button>
-                                </div>
-                            </div>
+                            <h3 style={{ fontSize: '1.3rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <AlertTriangle size={20} color="var(--danger)" /> Abuse & Policy Violation Reports ({reports.length})
+                            </h3>
 
-                            {filteredReports.length === 0 ? (
+                            {reports.length === 0 ? (
                                 <div className="glass-card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                    No reports found matching your filter.
+                                    No reports submitted.
                                 </div>
                             ) : (
-                                <div style={{ display: 'grid', gap: '1.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))' }}>
-                                    {filteredReports.map(report => (
-                                        <div key={report._id} className="glass-card animate-fade-in" style={{ padding: '1.5rem', borderLeft: `4px solid ${report.status === 'pending' ? 'var(--danger)' : 'var(--success)'}` }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                                                <div>
-                                                    <span className="badge" style={{ background: report.status === 'pending' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)', color: report.status === 'pending' ? 'var(--danger)' : 'var(--success)', marginBottom: '0.5rem', display: 'inline-block' }}>
-                                                        {report.status.toUpperCase()}
+                                reports.map(report => (
+                                    <div key={report._id} className="glass-card animate-fade-in" style={{ padding: '1.5rem', borderLeft: `4px solid ${report.status === 'pending' ? 'var(--danger)' : 'var(--success)'}` }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                                                    <span className="badge" style={{ background: report.status === 'pending' ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)', color: report.status === 'pending' ? 'var(--danger)' : 'var(--success)' }}>
+                                                        STATUS: {report.status.toUpperCase()}
                                                     </span>
-                                                    <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.15rem' }}>
-                                                        {report.itemId?.title ? (
-                                                            <Link to={`/item/${report.itemId._id}`} target="_blank" style={{ color: 'var(--accent-primary)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                                                                {report.itemId.title} <ExternalLink size={14} />
-                                                            </Link>
-                                                        ) : (
-                                                            <span style={{ color: 'var(--text-muted)' }}>[Item Deleted]</span>
-                                                        )}
-                                                    </h3>
+                                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                        Reported on: {new Date(report.createdAt).toLocaleString()}
+                                                    </span>
                                                 </div>
-
-                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                    {new Date(report.createdAt).toLocaleDateString()}
-                                                </span>
+                                                <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '1.15rem' }}>
+                                                    Reason: <span style={{ color: 'var(--danger)' }}>{report.reason}</span>
+                                                </h4>
+                                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                                    Reported By: <strong>{report.reportedBy?.name || 'Anonymous'}</strong> ({report.reportedBy?.email})
+                                                </p>
                                             </div>
 
-                                            <div style={{ padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '6px', marginBottom: '1rem' }}>
-                                                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--text-color)' }}>
-                                                    <strong>Report Reason:</strong> {report.reason}
-                                                </p>
-                                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                    Reported by: <strong>{report.reportedBy?.name}</strong> ({report.reportedBy?.email})
-                                                </p>
-                                                {report.itemId?.postedBy && (
-                                                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                        Posted by: <strong>{report.itemId.postedBy.name}</strong> ({report.itemId.postedBy.email})
-                                                        {report.itemId.postedBy.blocked && <span style={{ color: 'var(--danger)', marginLeft: '0.5rem', fontWeight: 'bold' }}>[USER BLOCKED]</span>}
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            {/* Action Buttons */}
-                                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                {report.status === 'pending' && (
-                                                    <button
-                                                        onClick={() => handleUpdateReportStatus(report._id, 'resolved')}
-                                                        className="btn-primary"
-                                                        style={{ background: 'var(--success)', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-                                                    >
-                                                        <CheckCircle2 size={14} /> Mark Resolved
+                                            {/* Report Action Buttons */}
+                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                {report.status === 'pending' ? (
+                                                    <>
+                                                        <button onClick={() => handleUpdateReport(report._id, 'reviewed')} className="btn-primary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', background: 'var(--success)' }}>
+                                                            <CheckCircle2 size={14} /> Mark Resolved
+                                                        </button>
+                                                        <button onClick={() => handleUpdateReport(report._id, 'dismissed')} className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem' }}>
+                                                            <XCircle size={14} /> Dismiss
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <button onClick={() => handleDeleteReport(report._id)} className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', color: 'var(--danger)' }}>
+                                                        <Trash2 size={14} /> Delete Log
                                                     </button>
                                                 )}
-                                                {report.itemId?._id && (
-                                                    <button
-                                                        onClick={() => handleDeleteItem(report.itemId._id)}
-                                                        className="btn-secondary"
-                                                        style={{ color: 'var(--danger)', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-                                                    >
-                                                        <Trash2 size={14} /> Delete Reported Post
-                                                    </button>
-                                                )}
-                                                {report.itemId?.postedBy?._id && !report.itemId.postedBy.blocked && (
-                                                    <button
-                                                        onClick={() => handleToggleBlockUser(report.itemId.postedBy._id)}
-                                                        className="btn-secondary"
-                                                        style={{ color: 'var(--warning)', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-                                                    >
-                                                        <Lock size={14} /> Block Poster
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={() => handleDeleteReport(report._id)}
-                                                    className="btn-secondary"
-                                                    style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-                                                >
-                                                    Dismiss
-                                                </button>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
+
+                                        {/* Target Item Summary */}
+                                        {report.itemId ? (
+                                            <div style={{ padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                    {report.itemId.photoUrl && (
+                                                        <img src={report.itemId.photoUrl} alt="Reported Item" style={{ width: '54px', height: '54px', borderRadius: '6px', objectFit: 'cover' }} />
+                                                    )}
+                                                    <div>
+                                                        <strong style={{ fontSize: '1rem' }}>{report.itemId.title}</strong>
+                                                        <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                            Posted by: {report.itemId.postedBy?.name || 'Unknown'} ({report.itemId.postedBy?.email}) • Category: {report.itemId.category}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <Link to={`/item/${report.itemId._id}`} target="_blank" className="btn-secondary" style={{ padding: '0.45rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                        <Eye size={14} /> View Item
+                                                    </Link>
+                                                    <button onClick={() => handleDeleteItem(report.itemId._id)} className="btn-secondary" style={{ padding: '0.45rem 0.8rem', fontSize: '0.8rem', color: 'var(--danger)' }}>
+                                                        <Trash2 size={14} /> Delete Item
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-secondary)', borderRadius: '6px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                                Target item has already been deleted from the database.
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
                             )}
                         </div>
                     )}
 
-                    {/* TAB: ITEM LISTINGS & SPAM */}
+                    {/* TAB: ITEM LISTINGS */}
                     {activeTab === 'items' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                                <div style={{ position: 'relative', width: '320px' }}>
-                                    <input
-                                        type="text"
-                                        placeholder="Search all items..."
-                                        value={itemSearch}
-                                        onChange={e => setItemSearch(e.target.value)}
-                                        style={{ width: '100%', paddingLeft: '2.5rem' }}
-                                    />
-                                    <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                </div>
-                                <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                                    Showing {filteredItems.length} of {items.length} items
-                                </span>
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                                <h3 style={{ fontSize: '1.3rem', margin: 0 }}>Campus Item Catalog ({items.length})</h3>
+                                <input
+                                    type="text"
+                                    placeholder="Filter by title, category, or location..."
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    style={{ width: '320px', padding: '0.6rem 1rem' }}
+                                />
                             </div>
 
-                            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
-                                {filteredItems.map(item => {
-                                    const itemReports = reports.filter(r => (r.itemId?._id || r.itemId) === item._id);
-                                    const hasAbuseReport = itemReports.length > 0;
-
-                                    return (
-                                        <div
-                                            key={item._id}
-                                            className="glass-card animate-fade-in"
-                                            style={{
-                                                padding: '1.25rem',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                justifyContent: 'space-between',
-                                                border: hasAbuseReport ? '1px solid rgba(239,68,68,0.5)' : '1px solid var(--border-color)'
-                                            }}
-                                        >
-                                            <div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                                                    <span className={`badge badge-${item.type}`}>{item.type}</span>
-                                                    <span className="badge" style={{ background: item.status === 'active' ? 'rgba(99,102,241,0.1)' : 'rgba(34,197,94,0.1)', color: item.status === 'active' ? 'var(--accent-primary)' : 'var(--success)' }}>
-                                                        {item.status}
-                                                    </span>
-                                                </div>
-
-                                                {hasAbuseReport && (
-                                                    <div style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--danger)', padding: '0.35rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                                        <AlertTriangle size={12} /> Flagged by {itemReports.length} user report(s)
-                                                    </div>
-                                                )}
-
-                                                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>
-                                                    <Link to={`/item/${item._id}`} style={{ color: 'var(--text-color)' }}>
-                                                        {item.title}
-                                                    </Link>
-                                                </h4>
-
-                                                <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                                                    {item.description.substring(0, 90)}...
-                                                </p>
-
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                                    <span>Location: {item.location}</span>
-                                                    <span>Posted by: {item.postedBy?.name || 'Unknown'} ({item.postedBy?.email})</span>
-                                                    <span>Date: {new Date(item.date).toLocaleDateString()}</span>
-                                                </div>
+                            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
+                                {filteredItems.map(item => (
+                                    <div key={item._id} className="glass-card animate-fade-in" style={{ padding: '1.25rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        {item.photoUrl && (
+                                            <img src={item.photoUrl} alt={item.title} style={{ width: '64px', height: '64px', borderRadius: '8px', objectFit: 'cover' }} />
+                                        )}
+                                        <div style={{ flex: 1 }}>
+                                            <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '1.05rem' }}>
+                                                <Link to={`/item/${item._id}`} style={{ color: 'var(--text-color)' }}>{item.title}</Link>
+                                            </h4>
+                                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+                                                <span className={`badge badge-${item.type}`}>{item.type}</span>
+                                                <span className="badge" style={{ background: 'var(--bg-secondary)' }}>{item.status}</span>
                                             </div>
-
-                                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
-                                                <Link
-                                                    to={`/item/${item._id}`}
-                                                    className="btn-secondary"
-                                                    style={{ flex: 1, textAlign: 'center', fontSize: '0.8rem', padding: '0.5rem' }}
-                                                >
-                                                    View
-                                                </Link>
-                                                <button
-                                                    onClick={() => handleDeleteItem(item._id)}
-                                                    className="btn-secondary"
-                                                    style={{ color: 'var(--danger)', fontSize: '0.8rem', padding: '0.5rem 0.75rem' }}
-                                                    title="Delete Item"
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            </div>
+                                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                By: {item.postedBy?.name || 'User'} • {item.location}
+                                            </p>
                                         </div>
-                                    );
-                                })}
+                                        <button
+                                            onClick={() => handleDeleteItem(item._id)}
+                                            className="btn-secondary"
+                                            style={{ color: 'var(--danger)', padding: '0.5rem' }}
+                                            title="Delete Listing"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}
 
-                    {/* TAB: MEMBER MANAGEMENT */}
-                    {activeTab === 'members' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                                <div style={{ position: 'relative', width: '320px' }}>
-                                    <input
-                                        type="text"
-                                        placeholder="Search student members..."
-                                        value={memberSearch}
-                                        onChange={e => setMemberSearch(e.target.value)}
-                                        style={{ width: '100%', paddingLeft: '2.5rem' }}
-                                    />
-                                    <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    {/* TAB: USERS & ACCOUNTS */}
+                    {activeTab === 'users' && (
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                                <div>
+                                    <h3 style={{ fontSize: '1.3rem', margin: 0 }}>Registered Students & Administrators</h3>
+                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                        {users.length} registered accounts ({blockedUsersCount} blocked)
+                                    </span>
                                 </div>
-                                <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                                    {members.length} registered students & moderators
-                                </span>
+                                <input
+                                    type="text"
+                                    placeholder="Search by student name or college email..."
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    style={{ width: '320px', padding: '0.6rem 1rem' }}
+                                />
                             </div>
 
-                            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
-                                {filteredMembers.map(member => (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                {filteredUsers.map(u => (
                                     <div
-                                        key={member._id}
+                                        key={u._id}
                                         className="glass-card animate-fade-in"
                                         style={{
-                                            padding: '1.5rem',
+                                            padding: '1.25rem 1.5rem',
                                             display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '1rem',
-                                            border: member.blocked ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid var(--border-color)'
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            borderLeft: u.blocked ? '4px solid var(--danger)' : u.role === 'admin' ? '4px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                                            flexWrap: 'wrap',
+                                            gap: '1rem'
                                         }}
                                     >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                            <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: u.blocked ? 'var(--danger)' : 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold' }}>
+                                                {u.name?.charAt(0).toUpperCase() || 'U'}
+                                            </div>
                                             <div>
-                                                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{member.name}</h3>
-                                                <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)', wordBreak: 'break-all' }}>
-                                                    {member.email}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <strong style={{ fontSize: '1.05rem' }}>{u.name}</strong>
+                                                    <span className="badge" style={{ background: u.role === 'admin' ? 'rgba(99,102,241,0.15)' : 'var(--bg-secondary)', color: u.role === 'admin' ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
+                                                        {u.role.toUpperCase()}
+                                                    </span>
+                                                    {u.blocked && (
+                                                        <span className="badge" style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--danger)' }}>
+                                                            BLOCKED
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                                    Email: {u.email} • Joined: {new Date(u.createdAt).toLocaleDateString()}
                                                 </p>
                                             </div>
-                                            <span className="badge" style={{ background: member.role === 'admin' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255,255,255,0.08)', color: member.role === 'admin' ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
-                                                {member.role.toUpperCase()}
-                                            </span>
                                         </div>
 
-                                        <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between' }}>
-                                            <span style={{ color: 'var(--text-muted)' }}>Status</span>
-                                            <span style={{ fontWeight: 'bold', color: member.blocked ? 'var(--danger)' : 'var(--success)' }}>
-                                                {member.blocked ? 'BLOCKED' : 'ACTIVE'}
-                                            </span>
-                                        </div>
-
-                                        {member._id !== user._id && (
-                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        {/* Actions */}
+                                        {u._id !== user._id && (
+                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                                 <button
-                                                    onClick={() => handleToggleBlockUser(member._id)}
+                                                    onClick={() => handleToggleBlock(u._id, u.blocked)}
                                                     className="btn-secondary"
                                                     style={{
-                                                        flex: 1,
+                                                        padding: '0.5rem 0.85rem',
+                                                        fontSize: '0.8rem',
                                                         display: 'flex',
                                                         alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        gap: '0.4rem',
-                                                        fontSize: '0.85rem',
-                                                        padding: '0.6rem',
-                                                        color: member.blocked ? 'var(--success)' : 'var(--warning)',
-                                                        borderColor: member.blocked ? 'rgba(34, 197, 94, 0.3)' : 'rgba(245, 158, 11, 0.3)'
+                                                        gap: '0.3rem',
+                                                        color: u.blocked ? 'var(--success)' : 'var(--danger)',
+                                                        borderColor: u.blocked ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'
                                                     }}
                                                 >
-                                                    {member.blocked ? (
-                                                        <>
-                                                            <Unlock size={14} /> Unblock
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Lock size={14} /> Block
-                                                        </>
-                                                    )}
+                                                    {u.blocked ? <UserCheck size={14} /> : <UserX size={14} />}
+                                                    {u.blocked ? 'Unblock User' : 'Block User'}
                                                 </button>
-
                                                 <button
-                                                    onClick={() => handleDeleteUser(member._id, member.name)}
+                                                    onClick={() => handleDeleteUser(u._id, u.name)}
                                                     className="btn-secondary"
                                                     style={{
-                                                        flex: 1,
+                                                        padding: '0.5rem 0.85rem',
+                                                        fontSize: '0.8rem',
                                                         display: 'flex',
                                                         alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        gap: '0.4rem',
-                                                        fontSize: '0.85rem',
-                                                        padding: '0.6rem',
-                                                        color: 'var(--danger)',
-                                                        borderColor: 'rgba(239, 68, 68, 0.3)'
+                                                        gap: '0.3rem',
+                                                        color: 'var(--danger)'
                                                     }}
-                                                    title="Delete Student Account"
+                                                    title="Permanently delete user and data"
                                                 >
-                                                    <UserX size={14} /> Delete Account
+                                                    <Trash2 size={14} /> Delete Account
                                                 </button>
                                             </div>
                                         )}
