@@ -7,8 +7,11 @@ router.post('/register', register);
 router.post('/login', login);
 router.post('/google', googleLogin);
 router.get('/me', protect, getUser);
+router.get('/users', protect, admin, getAllUsers);
 router.get('/', protect, admin, getAllUsers);
 router.patch('/users/:id/block', protect, admin, toggleBlockUser);
+router.patch('/:id/block', protect, admin, toggleBlockUser);
 router.delete('/users/:id', protect, admin, deleteUser);
+router.delete('/:id', protect, admin, deleteUser);
 
 module.exports = router;

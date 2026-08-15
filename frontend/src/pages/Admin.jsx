@@ -30,6 +30,7 @@ const Admin = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [actionMsg, setActionMsg] = useState('');
+    const [fetchError, setFetchError] = useState('');
 
     useEffect(() => {
         if (user && user.role === 'admin') {
@@ -40,22 +41,34 @@ const Admin = () => {
     const fetchAllAdminData = async () => {
         try {
             setLoading(true);
+            setFetchError('');
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const [repRes, itemRes, userRes, claimRes, exRes] = await Promise.all([
-                axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/reports`, config),
-                axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items?status=all`),
-                axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/users`, config),
-                axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/claims/all`, config),
-                axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/items/exchanges`, config)
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            const results = await Promise.allSettled([
+                axios.get(`${apiUrl}/api/reports`, config),
+                axios.get(`${apiUrl}/api/items?status=all`),
+                axios.get(`${apiUrl}/api/auth/users`, config),
+                axios.get(`${apiUrl}/api/items/claims/all`, config),
+                axios.get(`${apiUrl}/api/items/exchanges`, config)
             ]);
 
-            setReports(repRes.data || []);
-            setItems(itemRes.data || []);
-            setUsers(userRes.data || []);
-            setClaims(claimRes.data || []);
-            setExchanges(exRes.data || []);
+            const [repRes, itemRes, userRes, claimRes, exRes] = results;
+
+            if (repRes.status === 'fulfilled') setReports(repRes.value.data || []);
+            if (itemRes.status === 'fulfilled') setItems(itemRes.value.data || []);
+            if (userRes.status === 'fulfilled') setUsers(userRes.value.data || []);
+            if (claimRes.status === 'fulfilled') setClaims(claimRes.value.data || []);
+            if (exRes.status === 'fulfilled') setExchanges(exRes.value.data || []);
+
+            const rejected = results.filter(r => r.status === 'rejected');
+            if (rejected.length > 0) {
+                const firstErr = rejected[0].reason;
+                console.warn(`${rejected.length} admin requests failed:`, rejected);
+                setFetchError(firstErr.response?.data?.message || 'Some administrative metrics failed to load. Please verify server connection.');
+            }
         } catch (error) {
             console.error('Error fetching admin hub data:', error);
+            setFetchError('Failed to fetch admin data. Please ensure backend server is running.');
         } finally {
             setLoading(false);
         }
@@ -213,6 +226,13 @@ const Admin = () => {
             {actionMsg && (
                 <div style={{ background: 'rgba(34, 197, 94, 0.15)', color: 'var(--success)', border: '1px solid rgba(34, 197, 94, 0.3)', padding: '0.85rem 1.25rem', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '500' }}>
                     <CheckCircle2 size={18} /> {actionMsg}
+                </div>
+            )}
+
+            {/* Error Feedback Banner */}
+            {fetchError && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.15)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.85rem 1.25rem', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '500' }}>
+                    <AlertTriangle size={18} /> {fetchError}
                 </div>
             )}
 
